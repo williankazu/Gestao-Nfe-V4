@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Produtos NF-e</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <section class="section">
+        <div class="container">
+            <h1 class="title has-text-centered main-title">
+                <i class="fas fa-file-invoice"></i> Gestão de Produtos NF-e
+            </h1>
+
+            <!-- Upload Section -->
+            <div class="box no-print">
+                <div class="box-header">
+                    <h2 class="subtitle">
+                        <i class="fas fa-upload"></i> Upload de NF-e XML
+                    </h2>
+                </div>
+                <div class="file has-name is-fullwidth">
+                    <label class="file-label">
+                        <input class="file-input" type="file" id="xmlFile" accept=".xml" multiple>
+                        <span class="file-cta">
+                            <span class="file-icon">
+                                <i class="fas fa-upload"></i>
+                            </span>
+                            <span class="file-label">
+                                Selecionar XML(s)...
+                            </span>
+                        </span>
+                        <span class="file-name" id="fileName">
+                            Nenhum arquivo selecionado
+                        </span>
+                    </label>
+                </div>
+                <div class="notification is-info is-light mt-3">
+                    <i class="fas fa-info-circle"></i> Selecione um ou mais arquivos XML de NF-e para extrair os produtos automaticamente.
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="box no-print">
+                <div class="buttons is-centered">
+                    <button class="button is-success" onclick="addProduct()">
+                        <span class="icon"><i class="fas fa-plus"></i></span>
+                        <span>Adicionar Produto</span>
+                    </button>
+                    <button class="button is-danger" onclick="deleteSelected()">
+                        <span class="icon"><i class="fas fa-trash"></i></span>
+                        <span>Excluir Selecionados</span>
+                    </button>
+                    <button class="button is-link" onclick="exportToExcel()">
+                        <span class="icon"><i class="fas fa-file-excel"></i></span>
+                        <span>Exportar Excel</span>
+                    </button>
+                    <button class="button is-link" onclick="exportToCSV()">
+                        <span class="icon"><i class="fas fa-file-csv"></i></span>
+                        <span>Exportar CSV</span>
+                    </button>
+                    <button class="button is-info" onclick="importFile()">
+                        <span class="icon"><i class="fas fa-file-import"></i></span>
+                        <span>Importar</span>
+                    </button>
+                    <button class="button is-warning" onclick="window.print()">
+                        <span class="icon"><i class="fas fa-print"></i></span>
+                        <span>Imprimir</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Products Table -->
+            <div class="table-container">
+                <table class="table is-fullwidth is-striped is-hoverable product-table">
+                    <thead>
+                        <tr>
+                            <th class="no-print"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
+                            <th>Descrição</th>
+                            <th>NCM</th>
+                            <th>Custo Unitário</th>
+                            <th>Preço Venda</th>
+                            <th>Markup (%)</th>
+                            <th>Margem (%)</th>
+                            <th>Código EAN-13</th>
+                            <th>Código de Barras</th>
+                            <th class="no-print">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTable">
+                        <!-- Products will be added here dynamically -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="noProducts" class="notification is-warning has-text-centered" style="display: none;">
+                <i class="fas fa-box-open"></i> Nenhum produto cadastrado. Faça upload de um XML ou adicione produtos manualmente.
+            </div>
+
+            <!-- Footer Stats -->
+            <div class="box no-print" id="statsBox" style="display: none;">
+                <div class="columns is-mobile has-text-centered">
+                    <div class="column">
+                        <div class="stat-badge success">
+                            <i class="fas fa-box"></i> <strong id="totalProducts">0</strong> Produtos
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="stat-badge" style="background: #dbeafe; color: #1e40af;">
+                            <i class="fas fa-check-circle"></i> <strong id="totalWithEAN">0</strong> com EAN
+                        </div>
+                    </div>
+                    <div class="column">
+                        <div class="stat-badge" style="background: #fef3c7; color: #92400e;">
+                            <i class="fas fa-exclamation-triangle"></i> <strong id="totalWithoutEAN">0</strong> sem EAN
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Hidden file input for import -->
+    <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleImport(event)">
+
+    <script src="./script.js"></script>
+</body>
+</html>
