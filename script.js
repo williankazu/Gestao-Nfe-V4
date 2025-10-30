@@ -1,4 +1,4 @@
-
+ 
         let products = [];
         let productIdCounter = 1;
 
@@ -163,33 +163,50 @@
                         </button>
                     </div>
                 </td>
-                <td>
-                    <input class="input is-small" type="number" step="0.01" min="0"
-                           value="${product.custoUnitario.toFixed(2)}"
-                           onchange="updateProduct(${index}, 'custoUnitario', parseFloat(this.value))">
+                <td class="cost-cell">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span class="currency-symbol">R$</span>
+                        <input class="input is-small" type="number" step="0.01" min="0"
+                               value="${product.custoUnitario.toFixed(2)}"
+                               oninput="updateProductRealtime(${index}, 'custoUnitario', parseFloat(this.value))"
+                               onchange="updateProduct(${index}, 'custoUnitario', parseFloat(this.value))"
+                               style="flex: 1;">
+                    </div>
                 </td>
-                <td>
-                    <input class="input is-small" type="number" step="0.01" min="0"
-                           value="${product.precoVenda.toFixed(2)}"
-                           onchange="updateProduct(${index}, 'precoVenda', parseFloat(this.value))">
+                <td class="price-cell">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span class="currency-symbol">R$</span>
+                        <input class="input is-small" type="number" step="0.01" min="0"
+                               value="${product.precoVenda.toFixed(2)}"
+                               oninput="updateProductRealtime(${index}, 'precoVenda', parseFloat(this.value))"
+                               onchange="updateProduct(${index}, 'precoVenda', parseFloat(this.value))"
+                               style="flex: 1;">
+                    </div>
                 </td>
-                <td>
-                    <input class="input is-small ${markup >= 0 ? 'positive' : 'negative'}" 
-                           type="number" step="0.01"
-                           value="${markup.toFixed(2)}"
-                           onchange="updateFromMarkup(${index}, parseFloat(this.value))">
+                <td class="markup-cell">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <input class="input is-small ${markup >= 0 ? 'positive' : 'negative'}" 
+                               type="number" step="0.01"
+                               value="${markup.toFixed(2)}"
+                               oninput="updateFromMarkupRealtime(${index}, parseFloat(this.value))"
+                               onchange="updateFromMarkup(${index}, parseFloat(this.value))"
+                               style="flex: 1;">
+                        <span class="percent-symbol">%</span>
+                    </div>
                 </td>
-                <td>
-                    <div style="display: flex; align-items: center;">
+                <td class="margin-cell">
+                    <div style="display: flex; align-items: center; gap: 5px;">
                         <input class="input is-small ${margem >= 0 ? 'positive' : 'negative'}" 
                                type="number" step="0.01"
                                value="${margem.toFixed(2)}"
+                               oninput="updateFromMargemRealtime(${index}, parseFloat(this.value))"
                                onchange="updateFromMargem(${index}, parseFloat(this.value))"
                                style="flex: 1;">
+                        <span class="percent-symbol">%</span>
                         ${margemIndicator}
                     </div>
                 </td>
-                <td>
+                <td class="ean-cell">
                     <div class="field has-addons">
                         <div class="control is-expanded">
                             <input class="input is-small" type="text" 
@@ -250,10 +267,23 @@
             updateTable();
         }
 
+        function updateProductRealtime(index, field, value) {
+            if (isNaN(value)) return;
+            products[index][field] = value;
+            updateRowCalculations(index);
+        }
+
         function updateFromMarkup(index, markup) {
             const custo = products[index].custoUnitario;
             products[index].precoVenda = custo * (1 + markup / 100);
             updateTable();
+        }
+
+        function updateFromMarkupRealtime(index, markup) {
+            if (isNaN(markup)) return;
+            const custo = products[index].custoUnitario;
+            products[index].precoVenda = custo * (1 + markup / 100);
+            updateRowCalculations(index);
         }
 
         function updateFromMargem(index, margem) {
@@ -264,6 +294,60 @@
             }
             products[index].precoVenda = custo / (1 - margem / 100);
             updateTable();
+        }
+
+        function updateFromMargemRealtime(index, margem) {
+            if (isNaN(margem)) return;
+            const custo = products[index].custoUnitario;
+            if (margem >= 100) {
+                return;
+            }
+            products[index].precoVenda = custo / (1 - margem / 100);
+            updateRowCalculations(index);
+        }
+
+        function updateRowCalculations(index) {
+            const product = products[index];
+            const markup = calculateMarkup(product.custoUnitario, product.precoVenda);
+            const margem = calculateMargem(product.custoUnitario, product.precoVenda);
+            
+            // Find the row in the table
+            const tbody = document.getElementById('productsTable');
+            const row = tbody.children[index];
+            
+            if (!row) return;
+            
+            // Update custo unitario display (cell 3)
+            const custoInput = row.cells[3].querySelector('input');
+            if (custoInput && custoInput !== document.activeElement) {
+                custoInput.value = product.custoUnitario.toFixed(2);
+                custoInput.classList.add('value-updated');
+                setTimeout(() => custoInput.classList.remove('value-updated'), 500);
+            }
+            
+            // Update preco venda display (cell 4)
+            const precoInput = row.cells[4].querySelector('input');
+            if (precoInput && precoInput !== document.activeElement) {
+                precoInput.value = product.precoVenda.toFixed(2);
+                precoInput.classList.add('value-updated');
+                setTimeout(() => precoInput.classList.remove('value-updated'), 500);
+            }
+            
+            // Update markup (cell 5)
+            const markupInput = row.cells[5].querySelector('input');
+            if (markupInput && markupInput !== document.activeElement) {
+                markupInput.value = markup.toFixed(2);
+                markupInput.className = `input is-small ${markup >= 0 ? 'positive' : 'negative'} value-updated`;
+                setTimeout(() => markupInput.classList.remove('value-updated'), 500);
+            }
+            
+            // Update margem (cell 6)
+            const margemInput = row.cells[6].querySelector('input');
+            if (margemInput && margemInput !== document.activeElement) {
+                margemInput.value = margem.toFixed(2);
+                margemInput.className = `input is-small ${margem >= 0 ? 'positive' : 'negative'} value-updated`;
+                setTimeout(() => margemInput.classList.remove('value-updated'), 500);
+            }
         }
 
         function generateEAN13(index) {

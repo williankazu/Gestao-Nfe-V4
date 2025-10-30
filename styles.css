@@ -73,6 +73,7 @@
             border: none;
             font-weight: 600;
             padding: 1rem 0.75rem;
+            cursor: help;
         }
 
         .product-table tbody tr {
@@ -90,6 +91,29 @@
             border-radius: 6px;
             border: 2px solid #e5e7eb;
             transition: all 0.2s ease;
+            min-width: 80px;
+        }
+
+        .product-table input[type="text"] {
+            min-width: 150px;
+        }
+
+        .product-table input[type="number"] {
+            min-width: 100px;
+            font-weight: 500;
+        }
+
+        .product-table input[type="number"]:focus {
+            background-color: #f0f9ff;
+            font-weight: 600;
+        }
+
+        .description-cell input {
+            min-width: 250px;
+        }
+
+        .ncm-cell input {
+            min-width: 100px;
         }
 
         .product-table input:focus {
@@ -172,11 +196,31 @@
             .box {
                 box-shadow: none;
             }
+            .currency-symbol, .percent-symbol {
+                color: #000 !important;
+            }
         }
 
         @media (max-width: 768px) {
             .product-table {
                 font-size: 0.75rem;
+            }
+            .product-table input {
+                font-size: 0.8rem;
+                padding: 0.4rem 0.5rem;
+                min-width: 70px;
+            }
+            .product-table input[type="text"] {
+                min-width: 120px;
+            }
+            .product-table input[type="number"] {
+                min-width: 85px;
+            }
+            .description-cell input {
+                min-width: 180px;
+            }
+            .currency-symbol, .percent-symbol {
+                font-size: 0.8rem;
             }
             .button {
                 font-size: 0.85rem;
@@ -203,11 +247,13 @@
         .positive {
             color: var(--success-color);
             font-weight: 600;
+            background-color: #f0fdf4;
         }
 
         .negative {
             color: var(--danger-color);
             font-weight: 600;
+            background-color: #fef2f2;
         }
 
         .selected-row {
@@ -247,11 +293,60 @@
 
         .description-cell {
             position: relative;
-            min-width: 200px;
+            min-width: 250px;
+            max-width: 400px;
         }
 
         .ncm-cell {
-            min-width: 120px;
+            min-width: 140px;
+        }
+
+        .cost-cell {
+            min-width: 150px;
+        }
+
+        .price-cell {
+            min-width: 150px;
+        }
+
+        .markup-cell {
+            min-width: 130px;
+        }
+
+        .margin-cell {
+            min-width: 160px;
+        }
+
+        .currency-symbol {
+            font-weight: 700;
+            color: #059669;
+            font-size: 0.9rem;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .cost-cell:hover .currency-symbol,
+        .price-cell:hover .currency-symbol {
+            color: #047857;
+            transform: scale(1.1);
+        }
+
+        .percent-symbol {
+            font-weight: 700;
+            color: #4b5563;
+            font-size: 0.95rem;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .markup-cell:hover .percent-symbol,
+        .margin-cell:hover .percent-symbol {
+            color: #1f2937;
+            transform: scale(1.1);
+        }
+
+        .ean-cell {
+            min-width: 200px;
         }
 
         .description-wrapper {
@@ -313,5 +408,18 @@
                 transform: translateX(400px);
                 opacity: 0;
             }
+        }
+
+        @keyframes highlight {
+            0% {
+                background-color: #fef3c7;
+            }
+            100% {
+                background-color: transparent;
+            }
+        }
+
+        .value-updated {
+            animation: highlight 0.5s ease;
         }
     

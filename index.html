@@ -43,6 +43,11 @@
                 <div class="notification is-info is-light mt-3">
                     <i class="fas fa-info-circle"></i> Selecione um ou mais arquivos XML de NF-e para extrair os produtos automaticamente.
                 </div>
+                <div class="notification is-light mt-2" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
+                    <i class="fas fa-bolt"></i> <strong>Cálculos Automáticos:</strong> Digite o Preço de Venda, Markup ou Margem e veja os outros valores atualizarem em tempo real! 
+                    <br>
+                    <i class="fas fa-info-circle"></i> <strong>Dica:</strong> Valores monetários em R$, Markup e Margem em %.
+                </div>
             </div>
 
             <!-- Action Buttons -->
@@ -81,14 +86,23 @@
                     <thead>
                         <tr>
                             <th class="no-print"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
-                            <th>Descrição</th>
-                            <th>NCM</th>
-                            <th>Custo Unitário</th>
-                            <th>Preço Venda</th>
-                            <th>Markup (%)</th>
-                            <th>Margem (%)</th>
-                            <th>Código EAN-13</th>
-                            <th>Código de Barras</th>
+                            <th title="Descrição completa do produto">Descrição</th>
+                            <th title="Nomenclatura Comum do Mercosul">NCM</th>
+                            <th title="Valor unitário de custo">Custo Unitário</th>
+                            <th title="💡 Digite aqui e veja Markup/Margem atualizarem automaticamente!" style="position: relative;">
+                                Preço Venda
+                                <span style="color: #fbbf24; font-size: 1.1em; margin-left: 3px;">⚡</span>
+                            </th>
+                            <th title="💡 Digite o Markup desejado e o Preço será calculado automaticamente!">
+                                Markup (%)
+                                <span style="color: #fbbf24; font-size: 1.1em; margin-left: 3px;">⚡</span>
+                            </th>
+                            <th title="💡 Digite a Margem desejada e o Preço será calculado automaticamente!">
+                                Margem (%)
+                                <span style="color: #fbbf24; font-size: 1.1em; margin-left: 3px;">⚡</span>
+                            </th>
+                            <th title="Código de Barras EAN-13">Código EAN-13</th>
+                            <th title="Visualização do código de barras">Código de Barras</th>
                             <th class="no-print">Ações</th>
                         </tr>
                     </thead>
@@ -128,6 +142,6 @@
     <!-- Hidden file input for import -->
     <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleImport(event)">
 
-    <script src="./script.js"></script>
+   <script src="./script.js"></script>
 </body>
 </html>
