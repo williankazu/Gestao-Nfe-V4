@@ -1,4 +1,4 @@
- 
+
         let products = [];
         let productIdCounter = 1;
 
@@ -105,8 +105,60 @@
                 tbody.appendChild(row);
             });
 
-            // Update stats
-            const totalWithEAN = products.filter(p => p.ean && p.ean.length === 13).length;
+            // Calculate and update statistics
+            updateStatistics();
+        }
+
+        function updateStatistics() {
+            let totalCost = 0;
+            let totalRevenue = 0;
+            let totalMarkup = 0;
+            let totalMargin = 0;
+            let totalWithEAN = 0;
+
+            products.forEach(product => {
+                totalCost += product.custoUnitario;
+                totalRevenue += product.precoVenda;
+                totalMarkup += calculateMarkup(product.custoUnitario, product.precoVenda);
+                totalMargin += calculateMargem(product.custoUnitario, product.precoVenda);
+                
+                if (product.ean && product.ean.length === 13) {
+                    totalWithEAN++;
+                }
+            });
+
+            const totalProfit = totalRevenue - totalCost;
+            const avgMarkup = products.length > 0 ? totalMarkup / products.length : 0;
+            const avgMargin = products.length > 0 ? totalMargin / products.length : 0;
+            const profitPercentage = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
+
+            // Update DOM
+            document.getElementById('totalCost').textContent = totalCost.toFixed(2);
+            document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2);
+            
+            // Update profit with color indicator and icon
+            const profitElement = document.getElementById('totalProfit');
+            const profitCard = document.getElementById('profitCard');
+            const profitIcon = document.getElementById('profitIcon');
+            const profitLabel = document.getElementById('profitLabel');
+            const profitPercentageElement = document.getElementById('profitPercentage');
+            
+            profitElement.textContent = Math.abs(totalProfit).toFixed(2);
+            
+            if (totalProfit >= 0) {
+                profitCard.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+                profitIcon.className = 'fas fa-trophy';
+                profitLabel.textContent = 'Lucro Total Estimado';
+                profitPercentageElement.innerHTML = `<i class="fas fa-arrow-up"></i> ${profitPercentage.toFixed(2)}% sobre o custo`;
+            } else {
+                profitCard.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+                profitIcon.className = 'fas fa-exclamation-triangle';
+                profitLabel.textContent = 'Prejuízo Total Estimado';
+                profitPercentageElement.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(profitPercentage).toFixed(2)}% sobre o custo`;
+            }
+            
+            document.getElementById('avgMarkup').textContent = avgMarkup.toFixed(2);
+            document.getElementById('avgMargin').textContent = avgMargin.toFixed(2);
             document.getElementById('totalProducts').textContent = products.length;
             document.getElementById('totalWithEAN').textContent = totalWithEAN;
             document.getElementById('totalWithoutEAN').textContent = products.length - totalWithEAN;
@@ -612,6 +664,221 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Print Modal Functions
+        function openPrintModal() {
+            if (products.length === 0) {
+                showToast('Nenhum produto para imprimir', 'danger');
+                return;
+            }
+            document.getElementById('printModal').classList.add('is-active');
+        }
+
+        function closePrintModal() {
+            document.getElementById('printModal').classList.remove('is-active');
+        }
+
+        function closePreviewModal() {
+            document.getElementById('previewModal').classList.remove('is-active');
+        }
+
+        function previewLabels() {
+            closePrintModal();
+            showToast('Gerando preview das etiquetas...', 'success');
+            
+            // Generate labels
+            generateLabels();
+            
+            // Wait longer for barcodes to render completely
+            setTimeout(() => {
+                // Verify barcodes were generated
+                const labelsPrintArea = document.getElementById('labelsPrintArea');
+                const canvases = labelsPrintArea.querySelectorAll('canvas');
+                const svgs = labelsPrintArea.querySelectorAll('svg');
+                const totalBarcodes = canvases.length + svgs.length;
+                console.log(`Total de códigos de barras gerados: ${totalBarcodes} (${canvases.length} canvas, ${svgs.length} svg)`);
+                
+                // Copy labels to preview
+                const previewContent = document.getElementById('previewContent');
+                previewContent.innerHTML = labelsPrintArea.innerHTML;
+                
+                // Add preview styles
+                previewContent.style.background = 'white';
+                previewContent.querySelectorAll('.label-page').forEach(page => {
+                    page.style.border = '1px solid #ddd';
+                    page.style.marginBottom = '20px';
+                    page.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                });
+                
+                // Open preview modal
+                document.getElementById('previewModal').classList.add('is-active');
+                
+                // Log verification
+                const previewCanvases = previewContent.querySelectorAll('canvas');
+                const previewSvgs = previewContent.querySelectorAll('svg');
+                console.log(`Códigos de barras no preview: ${previewCanvases.length + previewSvgs.length}`);
+            }, 1500);
+        }
+
+        function confirmPrintLabels() {
+            closePreviewModal();
+            showToast('Preparando impressão...', 'success');
+            
+            // Give extra time for browser to prepare print
+            setTimeout(() => {
+                document.body.classList.add('printing-labels');
+                
+                // Verify barcodes before printing
+                const printArea = document.getElementById('labelsPrintArea');
+                const canvases = printArea.querySelectorAll('canvas');
+                const svgs = printArea.querySelectorAll('svg');
+                const totalBarcodes = canvases.length + svgs.length;
+                
+                console.log(`Imprimindo ${totalBarcodes} códigos de barras (${canvases.length} canvas, ${svgs.length} svg)`);
+                
+                canvases.forEach((canvas, idx) => {
+                    if (canvas.width === 0 || canvas.height === 0) {
+                        console.warn(`Canvas ${idx} pode estar vazio`);
+                    } else {
+                        console.log(`Canvas ${idx}: ${canvas.width}x${canvas.height}`);
+                    }
+                });
+                
+                setTimeout(() => {
+                    window.print();
+                    setTimeout(() => {
+                        document.body.classList.remove('printing-labels');
+                    }, 200);
+                }, 300);
+            }, 500);
+        }
+
+        // Close modal with ESC key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePrintModal();
+                closePreviewModal();
+            }
+        });
+
+        function printNormal() {
+            closePrintModal();
+            document.body.classList.remove('printing-labels');
+            setTimeout(() => {
+                window.print();
+            }, 100);
+        }
+
+        function generateLabels() {
+            const labelsPrintArea = document.getElementById('labelsPrintArea');
+            labelsPrintArea.innerHTML = '';
+
+            const itemsPerPage = 20;
+            const pages = Math.ceil(products.length / itemsPerPage);
+
+            for (let pageIndex = 0; pageIndex < pages; pageIndex++) {
+                const page = document.createElement('div');
+                page.className = 'label-page';
+
+                const start = pageIndex * itemsPerPage;
+                const end = Math.min(start + itemsPerPage, products.length);
+
+                for (let i = start; i < end; i++) {
+                    const product = products[i];
+                    const label = createLabelElement(product, pageIndex, i);
+                    page.appendChild(label);
+                }
+
+                labelsPrintArea.appendChild(page);
+            }
+            
+            console.log(`${pages} página(s) de etiquetas geradas com ${products.length} produtos`);
+        }
+
+        function createLabelElement(product, pageIndex, itemIndex) {
+            const label = document.createElement('div');
+            label.className = 'product-label';
+
+            // Descrição
+            const description = document.createElement('div');
+            description.className = 'label-description';
+            description.textContent = product.descricao || 'Sem descrição';
+            label.appendChild(description);
+
+            // Preço
+            const price = document.createElement('div');
+            price.className = 'label-price';
+            price.textContent = `R$ ${product.precoVenda.toFixed(2)}`;
+            label.appendChild(price);
+
+            // Código de barras
+            const barcodeContainer = document.createElement('div');
+            barcodeContainer.className = 'label-barcode';
+
+            if (product.ean && product.ean.length === 13 && /^\d+$/.test(product.ean)) {
+                const uniqueId = `barcode-p${pageIndex}-i${itemIndex}-${product.id}`;
+                
+                // Try canvas first
+                const canvas = document.createElement('canvas');
+                canvas.setAttribute('id', uniqueId);
+                canvas.style.maxWidth = '100%';
+                canvas.style.height = 'auto';
+                barcodeContainer.appendChild(canvas);
+                label.appendChild(barcodeContainer);
+
+                // Generate barcode using canvas
+                try {
+                    JsBarcode(canvas, product.ean, {
+                        format: "EAN13",
+                        width: 2,
+                        height: 50,
+                        displayValue: true,
+                        fontSize: 12,
+                        fontOptions: "bold",
+                        font: "monospace",
+                        textAlign: "center",
+                        textMargin: 2,
+                        margin: 5,
+                        background: "#ffffff",
+                        lineColor: "#000000",
+                        valid: function(valid) {
+                            if (!valid) {
+                                console.error('EAN inválido:', product.ean);
+                            }
+                        }
+                    });
+                    
+                    // Verify canvas has content
+                    if (canvas.width > 0 && canvas.height > 0) {
+                        console.log(`✓ Código de barras gerado: ${product.ean} (${canvas.width}x${canvas.height})`);
+                    } else {
+                        console.warn(`⚠ Canvas vazio para: ${product.ean}`);
+                    }
+                } catch (e) {
+                    console.error('❌ Erro ao gerar código de barras para:', product.descricao, e);
+                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 9pt; font-weight: bold; font-family: monospace;">
+                        ||||| ${product.ean} |||||
+                    </div>`;
+                }
+            } else {
+                const noBarcode = document.createElement('div');
+                if (product.ean) {
+                    noBarcode.textContent = `EAN inválido: ${product.ean}`;
+                    noBarcode.style.color = '#d32f2f';
+                } else {
+                    noBarcode.textContent = 'Sem código EAN';
+                    noBarcode.style.color = '#666';
+                }
+                noBarcode.style.textAlign = 'center';
+                noBarcode.style.fontSize = '8pt';
+                noBarcode.style.padding = '5px';
+                noBarcode.style.fontWeight = 'bold';
+                barcodeContainer.appendChild(noBarcode);
+                label.appendChild(barcodeContainer);
+            }
+
+            return label;
         }
 
         // Initialize empty state
