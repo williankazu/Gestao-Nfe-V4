@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Produtos NF-e</title>
+    <title>Gestão de Produtos NF-e com Tributos</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <section class="section">
         <div class="container">
             <h1 class="title has-text-centered main-title">
-                <i class="fas fa-file-invoice"></i> Gestão de Produtos NF-e
+                <i class="fas fa-file-invoice"></i> Gestão de Produtos NF-e com Tributos
             </h1>
 
             <!-- Upload Section -->
@@ -24,6 +24,38 @@
                         <i class="fas fa-upload"></i> Upload de NF-e XML
                     </h2>
                 </div>
+                
+                <!-- Toggle Tributos 2026 -->
+                <div class="field" style="margin-bottom: 1rem;">
+                    <div class="control">
+                        <label class="checkbox" style="display: flex; align-items: center; gap: 10px; padding: 1rem; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <input type="checkbox" id="tributos2026Toggle" onchange="toggleTributos2026()">
+                            <span style="font-weight: 600; color: #1e40af;">
+                                <i class="fas fa-landmark"></i> Aplicar Tributos 2026 (Reforma Tributária)
+                            </span>
+                        </label>
+                        <p class="help" id="tributosHelp" style="margin-top: 0.5rem; margin-left: 1rem; color: #666;">
+                            <strong>Modo Atual:</strong> Extrai ICMS, IPI, PIS, COFINS da NF-e | 
+                            <strong>Modo 2026:</strong> IBS (26,5%) + CBS calculados automaticamente
+                        </p>
+                    </div>
+                </div>
+                
+                <!-- Toggle Sem Tributos -->
+                <div class="field" style="margin-bottom: 1rem;">
+                    <div class="control">
+                        <label class="checkbox" style="display: flex; align-items: center; gap: 10px; padding: 1rem; background: #fef2f2; border-radius: 8px; border-left: 4px solid #ef4444;">
+                            <input type="checkbox" id="semTributosToggle" onchange="toggleSemTributos()">
+                            <span style="font-weight: 600; color: #991b1b;">
+                                <i class="fas fa-ban"></i> Trabalhar SEM Tributos (Custo Total = Custo Base)
+                            </span>
+                        </label>
+                        <p class="help" id="semTributosHelp" style="margin-top: 0.5rem; margin-left: 1rem; color: #666;">
+                            <strong>Sem Tributos:</strong> Desativa cálculo de tributos (Custo Total = Custo Base)
+                        </p>
+                    </div>
+                </div>
+                
                 <div class="file has-name is-fullwidth">
                     <label class="file-label">
                         <input class="file-input" type="file" id="xmlFile" accept=".xml" multiple>
@@ -41,14 +73,18 @@
                     </label>
                 </div>
                 <div class="notification is-info is-light mt-3">
-                    <i class="fas fa-info-circle"></i> Selecione um ou mais arquivos XML de NF-e para extrair os produtos automaticamente.
+                    <i class="fas fa-info-circle"></i> Selecione um ou mais arquivos XML de NF-e para extrair os produtos E tributos automaticamente.
                 </div>
                 <div class="notification is-light mt-2" style="background-color: #fef3c7; border-left: 4px solid #f59e0b; color: #92400e;">
                     <i class="fas fa-bolt"></i> <strong>Cálculos Automáticos:</strong> Digite o Preço de Venda, Markup ou Margem e veja os outros valores atualizarem em tempo real! 
                     <br>
-                    <i class="fas fa-info-circle"></i> <strong>Dica:</strong> Valores monetários em R$, Markup e Margem em %.
+                    <i class="fas fa-landmark"></i> <strong>Tributos:</strong> O sistema extrai ICMS, IPI, PIS e COFINS da NF-e. Ative o modo 2026 para simular IBS (26,5%) + CBS!
                     <br>
-                    <i class="fas fa-barcode"></i> <strong>Etiquetas:</strong> Os códigos de barras EAN-13 são gerados automaticamente na impressão. Use o Preview antes de imprimir!
+                    <i class="fas fa-calculator"></i> <strong>Custo Total:</strong> Calculado automaticamente = Custo Base + Tributos
+                    <br>
+                    <i class="fas fa-box"></i> <strong>Embalagens:</strong> Use "Qtd/Emb" para produtos que vêm em caixas. Ex: 1 CX de 500 parafusos por R$ 50,00 = R$ 0,10 unitário.
+                    <br>
+                    <i class="fas fa-barcode"></i> <strong>Etiquetas:</strong> As etiquetas mostram a descrição, unidade e código de barras EAN-13. Use o Preview!
                 </div>
             </div>
 
@@ -90,7 +126,11 @@
                             <th class="no-print"><input type="checkbox" id="selectAll" onclick="toggleSelectAll()"></th>
                             <th title="Descrição completa do produto">Descrição</th>
                             <th title="Nomenclatura Comum do Mercosul">NCM</th>
-                            <th title="Valor unitário de custo">Custo Unitário</th>
+                            <th title="Unidade de medida (UN, CX, KG, etc)">Unidade</th>
+                            <th title="Quantidade de unidades por embalagem">Qtd/Emb</th>
+                            <th title="Valor base do produto sem tributos">Custo Base</th>
+                            <th title="Soma de todos os tributos (ICMS+IPI+PIS+COFINS ou IBS+CBS)">Tributos</th>
+                            <th title="Custo base + tributos = custo real do produto">Custo Total</th>
                             <th title="💡 Digite aqui e veja Markup/Margem atualizarem automaticamente!" style="position: relative;">
                                 Preço Venda
                                 <span style="color: #fbbf24; font-size: 1.1em; margin-left: 3px;">⚡</span>
@@ -130,7 +170,7 @@
                     <div class="column is-6-mobile is-3-tablet">
                         <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 1.5rem; border-radius: 12px; text-align: center;">
                             <div style="font-size: 0.85rem; margin-bottom: 0.5rem; opacity: 0.9;">
-                                <i class="fas fa-dollar-sign"></i> Custo Total
+                                <i class="fas fa-dollar-sign"></i> Custo Total (com Tributos)
                             </div>
                             <div style="font-size: 1.5rem; font-weight: 700;">
                                 R$ <span id="totalCost">0.00</span>
@@ -167,6 +207,23 @@
                             </div>
                             <div style="font-size: 1.5rem; font-weight: 700;">
                                 <span id="avgMargin">0.00</span>%
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Tributos Totais -->
+                <div class="columns is-mobile mt-2">
+                    <div class="column">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 1.5rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem; opacity: 0.9;">
+                                <i class="fas fa-landmark"></i> Total de Tributos <span id="tributosModeBadge" class="tributos-badge tributos-atual">Atual</span>
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">
+                                R$ <span id="totalTributos">0.00</span>
+                            </div>
+                            <div style="font-size: 0.75rem; margin-top: 0.5rem; opacity: 0.8;" id="tributosBreakdown">
+                                <!-- Breakdown will be shown here -->
                             </div>
                         </div>
                     </div>
@@ -292,6 +349,6 @@
     <!-- Hidden file input for import -->
     <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="display: none;" onchange="handleImport(event)">
 
-   <script src="./script.js"></script>
+    <script src="./script.js"></script>
 </body>
 </html>

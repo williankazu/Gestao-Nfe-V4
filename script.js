@@ -1,9 +1,113 @@
 
         let products = [];
         let productIdCounter = 1;
+        let tributos2026Mode = false;
+        let tributosDisabled = false;
 
         // Initialize
         document.getElementById('xmlFile').addEventListener('change', handleXMLUpload);
+        
+        function toggleTributos2026() {
+            tributos2026Mode = document.getElementById('tributos2026Toggle').checked;
+            const helpText = document.getElementById('tributosHelp');
+            const badge = document.getElementById('tributosModeBadge');
+            
+            if (tributos2026Mode) {
+                helpText.innerHTML = '<strong style="color: #059669;">✓ Modo 2026 Ativo:</strong> Usando IBS (26,5%) + CBS no lugar de ICMS, IPI, PIS e COFINS';
+                badge.className = 'tributos-badge tributos-2026';
+                badge.textContent = '2026';
+                
+                // Desabilitar o toggle de sem tributos
+                document.getElementById('semTributosToggle').checked = false;
+                tributosDisabled = false;
+            } else {
+                helpText.innerHTML = '<strong>Modo Atual:</strong> Extrai ICMS, IPI, PIS, COFINS da NF-e | <strong>Modo 2026:</strong> IBS (26,5%) + CBS calculados automaticamente';
+                badge.className = 'tributos-badge tributos-atual';
+                badge.textContent = 'Atual';
+            }
+            
+            // Recalcular todos os produtos com novo modo
+            products.forEach((product, index) => {
+                recalculateTributos(index);
+            });
+            updateTable();
+            
+            showToast(tributos2026Mode ? 'Tributos 2026 ativados! IBS (26,5%) + CBS' : 'Tributos tradicionais ativados!');
+        }
+        
+        function toggleSemTributos() {
+            tributosDisabled = document.getElementById('semTributosToggle').checked;
+            const helpText2 = document.getElementById('semTributosHelp');
+            const badge = document.getElementById('tributosModeBadge');
+            
+            if (tributosDisabled) {
+                helpText2.innerHTML = '<strong style="color: #dc2626;">✓ Tributos Desativados:</strong> Trabalhando sem tributos - Custo Total = Custo Base';
+                badge.className = 'tributos-badge';
+                badge.style.background = '#6b7280';
+                badge.textContent = 'Sem Tributos';
+                
+                // Desabilitar modo 2026
+                document.getElementById('tributos2026Toggle').checked = false;
+                tributos2026Mode = false;
+            } else {
+                helpText2.innerHTML = '<strong>Sem Tributos:</strong> Desativa cálculo de tributos (Custo Total = Custo Base)';
+                badge.className = 'tributos-badge tributos-atual';
+                badge.textContent = 'Atual';
+            }
+            
+            // Recalcular todos os produtos
+            products.forEach((product, index) => {
+                recalculateTributos(index);
+            });
+            updateTable();
+            
+            showToast(tributosDisabled ? 'Tributos desativados! Custo Total = Custo Base' : 'Tributos reativados!');
+        }
+
+        function recalculateTributos(index) {
+            const product = products[index];
+            
+            if (tributosDisabled) {
+                // Sem tributos
+                product.tributos = 0;
+                product.custoTotal = product.custoBase;
+                product.tributosDetalhes = {
+                    modo: 'desativado'
+                };
+            } else if (tributos2026Mode) {
+                // Reforma tributária 2026: IBS + CBS
+                const ibs = product.custoBase * 0.265; // 26,5%
+                const cbs = 0; // CBS ainda não definido, pode ser ajustado
+                product.tributos = ibs + cbs;
+                product.tributosDetalhes = {
+                    modo: '2026',
+                    ibs: ibs,
+                    cbs: cbs
+                };
+                product.custoTotal = product.custoBase + product.tributos;
+            } else {
+                // Manter tributos originais da NF-e
+                if (product.tributosDetalhes && product.tributosDetalhes.modo === 'nfe') {
+                    // Já tem tributos da NF-e, manter
+                    product.tributos = 
+                        (product.tributosDetalhes.icms || 0) +
+                        (product.tributosDetalhes.ipi || 0) +
+                        (product.tributosDetalhes.pis || 0) +
+                        (product.tributosDetalhes.cofins || 0);
+                } else {
+                    // Calcular tributos aproximados (18% padrão)
+                    product.tributos = product.custoBase * 0.18;
+                    product.tributosDetalhes = {
+                        modo: 'estimado',
+                        icms: product.custoBase * 0.12,
+                        ipi: 0,
+                        pis: product.custoBase * 0.0165,
+                        cofins: product.custoBase * 0.076
+                    };
+                }
+                product.custoTotal = product.custoBase + product.tributos;
+            }
+        }
 
         function handleXMLUpload(event) {
             const files = event.target.files;
@@ -33,24 +137,144 @@
                 if (!prod) continue;
 
                 const descricao = getXMLValue(prod, 'xProd');
-                const custoUnitario = parseFloat(getXMLValue(prod, 'vUnCom')) || 0;
+                const valorUnitario = parseFloat(getXMLValue(prod, 'vUnCom')) || 0;
+                const quantidade = parseFloat(getXMLValue(prod, 'qCom')) || 1;
+                const unidade = getXMLValue(prod, 'uCom') || 'UN';
                 const ncm = getXMLValue(prod, 'NCM') || '';
                 const ean = getXMLValue(prod, 'cEAN') || '';
+
+                // Extrair tributos da NF-e
+                const imposto = item.getElementsByTagName('imposto')[0];
+                let tributos = {
+                    icms: 0,
+                    ipi: 0,
+                    pis: 0,
+                    cofins: 0
+                };
+
+                if (imposto) {
+                    // ICMS
+                    const icms = imposto.getElementsByTagName('ICMS')[0];
+                    if (icms) {
+                        // Pode ser ICMS00, ICMS10, ICMS20, etc.
+                        const icmsTypes = ['ICMS00', 'ICMS10', 'ICMS20', 'ICMS30', 'ICMS40', 'ICMS51', 'ICMS60', 'ICMS70', 'ICMS90'];
+                        for (let type of icmsTypes) {
+                            const icmsTag = icms.getElementsByTagName(type)[0];
+                            if (icmsTag) {
+                                tributos.icms = parseFloat(getXMLValue(icmsTag, 'vICMS')) || 0;
+                                break;
+                            }
+                        }
+                    }
+
+                    // IPI
+                    const ipi = imposto.getElementsByTagName('IPI')[0];
+                    if (ipi) {
+                        const ipiTrib = ipi.getElementsByTagName('IPITrib')[0];
+                        if (ipiTrib) {
+                            tributos.ipi = parseFloat(getXMLValue(ipiTrib, 'vIPI')) || 0;
+                        }
+                    }
+
+                    // PIS
+                    const pis = imposto.getElementsByTagName('PIS')[0];
+                    if (pis) {
+                        const pisTypes = ['PISAliq', 'PISNT', 'PISQtde', 'PISOutr'];
+                        for (let type of pisTypes) {
+                            const pisTag = pis.getElementsByTagName(type)[0];
+                            if (pisTag) {
+                                tributos.pis = parseFloat(getXMLValue(pisTag, 'vPIS')) || 0;
+                                break;
+                            }
+                        }
+                    }
+
+                    // COFINS
+                    const cofins = imposto.getElementsByTagName('COFINS')[0];
+                    if (cofins) {
+                        const cofinsTypes = ['COFINSAliq', 'COFINSNT', 'COFINSQtde', 'COFINSOutr'];
+                        for (let type of cofinsTypes) {
+                            const cofinsTag = cofins.getElementsByTagName(type)[0];
+                            if (cofinsTag) {
+                                tributos.cofins = parseFloat(getXMLValue(cofinsTag, 'vCOFINS')) || 0;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Calcular tributos unitários
+                // Os tributos na NF-e são totais do item, preciso dividir pela quantidade
+                const totalTributosItem = tributos.icms + tributos.ipi + tributos.pis + tributos.cofins;
+                const tributosUnitarios = quantidade > 0 ? totalTributosItem / quantidade : 0;
+                
+                // Custo base unitário (valor da NF-e)
+                const custoBase = valorUnitario;
+                
+                // Normalizar unidade
+                const unidadeNormalizada = normalizeUnit(unidade);
+
+                // Calcular custo total unitário
+                const custoTotal = custoBase + tributosUnitarios;
 
                 addProductToList({
                     descricao: descricao,
                     ncm: ncm,
-                    custoUnitario: custoUnitario.toFixed(2),
-                    precoVenda: (custoUnitario * 1.3).toFixed(2), // 30% markup default
-                    ean: ean && ean !== 'SEM GTIN' ? ean : ''
+                    unidade: unidadeNormalizada,
+                    qtdEmbalagem: 1,
+                    custoBase: custoBase,
+                    tributos: tributosUnitarios,
+                    custoTotal: custoTotal,
+                    precoVenda: (custoTotal * 1.3).toFixed(2), // 30% markup default sobre custo total
+                    ean: ean && ean !== 'SEM GTIN' ? ean : '',
+                    tributosDetalhes: {
+                        modo: 'nfe',
+                        icms: quantidade > 0 ? tributos.icms / quantidade : 0,
+                        ipi: quantidade > 0 ? tributos.ipi / quantidade : 0,
+                        pis: quantidade > 0 ? tributos.pis / quantidade : 0,
+                        cofins: quantidade > 0 ? tributos.cofins / quantidade : 0
+                    }
                 });
                 count++;
             }
 
             updateTable();
             if (count > 0) {
-                showToast(`${count} produto(s) extraído(s) da NF-e com sucesso!`);
+                showToast(`${count} produto(s) extraído(s) da NF-e com tributos!`);
             }
+        }
+
+        function normalizeUnit(unit) {
+            if (!unit) return 'UN';
+            
+            const unitUpper = unit.toUpperCase().trim();
+            
+            // Mapeamento de unidades
+            const unitMap = {
+                'UNIDADE': 'UN',
+                'UND': 'UN',
+                'UNID': 'UN',
+                'PEÇA': 'PC',
+                'PECA': 'PC',
+                'PÇ': 'PC',
+                'SACO': 'SC',
+                'PACOTE': 'PCT',
+                'DUZIA': 'DZ',
+                'DÚZIA': 'DZ',
+                'METRO': 'M',
+                'METROS': 'M',
+                'QUILO': 'KG',
+                'QUILOGRAMA': 'KG',
+                'QUILOGRAMAS': 'KG',
+                'LITRO': 'L',
+                'LITROS': 'L',
+                'MILILITRO': 'ML',
+                'MILILITROS': 'ML',
+                'GALÃO': 'GALAO',
+                'GALAO': 'GALAO'
+            };
+            
+            return unitMap[unitUpper] || unitUpper;
         }
 
         function getXMLValue(parent, tagName) {
@@ -62,7 +286,11 @@
             addProductToList({
                 descricao: 'Novo Produto',
                 ncm: '',
-                custoUnitario: '0.00',
+                unidade: 'UN',
+                qtdEmbalagem: 1,
+                custoBase: 0,
+                tributos: 0,
+                custoTotal: 0,
                 precoVenda: '0.00',
                 ean: ''
             });
@@ -71,14 +299,33 @@
         }
 
         function addProductToList(data) {
+            const custoBase = parseFloat(data.custoBase) || 0;
+            let tributos = parseFloat(data.tributos) || 0;
+            
+            // Se não tem tributos definidos, calcular
+            if (tributos === 0 && custoBase > 0) {
+                if (tributos2026Mode) {
+                    tributos = custoBase * 0.265; // IBS 26,5%
+                } else {
+                    tributos = custoBase * 0.18; // Estimativa padrão
+                }
+            }
+            
+            const custoTotal = custoBase + tributos;
+
             const product = {
                 id: productIdCounter++,
                 descricao: data.descricao || '',
                 ncm: data.ncm || '',
-                custoUnitario: parseFloat(data.custoUnitario) || 0,
-                precoVenda: parseFloat(data.precoVenda) || 0,
+                unidade: data.unidade || 'UN',
+                qtdEmbalagem: parseFloat(data.qtdEmbalagem) || 1,
+                custoBase: custoBase,
+                tributos: tributos,
+                custoTotal: custoTotal,
+                precoVenda: parseFloat(data.precoVenda) || custoTotal * 1.3,
                 ean: data.ean || '',
-                selected: false
+                selected: false,
+                tributosDetalhes: data.tributosDetalhes || null
             };
 
             products.push(product);
@@ -110,20 +357,46 @@
         }
 
         function updateStatistics() {
+            let totalCostBase = 0;
+            let totalTributos = 0;
             let totalCost = 0;
             let totalRevenue = 0;
             let totalMarkup = 0;
             let totalMargin = 0;
             let totalWithEAN = 0;
+            
+            let tributosBreakdown = {
+                icms: 0,
+                ipi: 0,
+                pis: 0,
+                cofins: 0,
+                ibs: 0,
+                cbs: 0
+            };
 
             products.forEach(product => {
-                totalCost += product.custoUnitario;
+                totalCostBase += product.custoBase;
+                totalTributos += product.tributos;
+                totalCost += product.custoTotal;
                 totalRevenue += product.precoVenda;
-                totalMarkup += calculateMarkup(product.custoUnitario, product.precoVenda);
-                totalMargin += calculateMargem(product.custoUnitario, product.precoVenda);
+                totalMarkup += calculateMarkup(product.custoTotal, product.precoVenda);
+                totalMargin += calculateMargem(product.custoTotal, product.precoVenda);
                 
                 if (product.ean && product.ean.length === 13) {
                     totalWithEAN++;
+                }
+                
+                // Breakdown de tributos
+                if (product.tributosDetalhes) {
+                    if (product.tributosDetalhes.modo === '2026') {
+                        tributosBreakdown.ibs += product.tributosDetalhes.ibs || 0;
+                        tributosBreakdown.cbs += product.tributosDetalhes.cbs || 0;
+                    } else {
+                        tributosBreakdown.icms += product.tributosDetalhes.icms || 0;
+                        tributosBreakdown.ipi += product.tributosDetalhes.ipi || 0;
+                        tributosBreakdown.pis += product.tributosDetalhes.pis || 0;
+                        tributosBreakdown.cofins += product.tributosDetalhes.cofins || 0;
+                    }
                 }
             });
 
@@ -135,6 +408,15 @@
             // Update DOM
             document.getElementById('totalCost').textContent = totalCost.toFixed(2);
             document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2);
+            document.getElementById('totalTributos').textContent = totalTributos.toFixed(2);
+            
+            // Breakdown de tributos
+            const breakdownEl = document.getElementById('tributosBreakdown');
+            if (tributos2026Mode) {
+                breakdownEl.innerHTML = `IBS: R$ ${tributosBreakdown.ibs.toFixed(2)} | CBS: R$ ${tributosBreakdown.cbs.toFixed(2)}`;
+            } else {
+                breakdownEl.innerHTML = `ICMS: R$ ${tributosBreakdown.icms.toFixed(2)} | IPI: R$ ${tributosBreakdown.ipi.toFixed(2)} | PIS: R$ ${tributosBreakdown.pis.toFixed(2)} | COFINS: R$ ${tributosBreakdown.cofins.toFixed(2)}`;
+            }
             
             // Update profit with color indicator and icon
             const profitElement = document.getElementById('totalProfit');
@@ -168,8 +450,8 @@
             const row = document.createElement('tr');
             if (product.selected) row.classList.add('selected-row');
 
-            const markup = calculateMarkup(product.custoUnitario, product.precoVenda);
-            const margem = calculateMargem(product.custoUnitario, product.precoVenda);
+            const markup = calculateMarkup(product.custoTotal, product.precoVenda);
+            const margem = calculateMargem(product.custoTotal, product.precoVenda);
             
             // Indicadores visuais de margem
             let margemIndicator = '';
@@ -215,14 +497,66 @@
                         </button>
                     </div>
                 </td>
+                <td class="unit-cell">
+                    <select class="select is-small" 
+                            onchange="updateProduct(${index}, 'unidade', this.value)"
+                            style="width: 100%;">
+                        <option value="UN" ${product.unidade === 'UN' ? 'selected' : ''}>UN</option>
+                        <option value="PC" ${product.unidade === 'PC' ? 'selected' : ''}>PC</option>
+                        <option value="CX" ${product.unidade === 'CX' ? 'selected' : ''}>CX</option>
+                        <option value="SC" ${product.unidade === 'SC' ? 'selected' : ''}>SC</option>
+                        <option value="PCT" ${product.unidade === 'PCT' ? 'selected' : ''}>PCT</option>
+                        <option value="DZ" ${product.unidade === 'DZ' ? 'selected' : ''}>DZ</option>
+                        <option value="FARDO" ${product.unidade === 'FARDO' ? 'selected' : ''}>FARDO</option>
+                        <option value="TUBO" ${product.unidade === 'TUBO' ? 'selected' : ''}>TUBO</option>
+                        <option value="BARRA" ${product.unidade === 'BARRA' ? 'selected' : ''}>BARRA</option>
+                        <option value="M" ${product.unidade === 'M' ? 'selected' : ''}>METRO</option>
+                        <option value="KG" ${product.unidade === 'KG' ? 'selected' : ''}>KG</option>
+                        <option value="L" ${product.unidade === 'L' ? 'selected' : ''}>LITRO</option>
+                        <option value="ML" ${product.unidade === 'ML' ? 'selected' : ''}>ML</option>
+                        <option value="225ML" ${product.unidade === '225ML' ? 'selected' : ''}>225ML</option>
+                        <option value="900ML" ${product.unidade === '900ML' ? 'selected' : ''}>900ML</option>
+                        <option value="GALAO" ${product.unidade === 'GALAO' ? 'selected' : ''}>GALÃO</option>
+                        <option value="LATA" ${product.unidade === 'LATA' ? 'selected' : ''}>LATA</option>
+                        <option value="CENTO" ${product.unidade === 'CENTO' ? 'selected' : ''}>CENTO</option>
+                    </select>
+                </td>
+                <td class="qty-cell">
+                    <input class="input is-small" type="number" step="1" min="1"
+                           value="${product.qtdEmbalagem}"
+                           onchange="updateQtyEmbalagem(${index}, parseFloat(this.value))"
+                           title="Qtd de unidades por embalagem">
+                </td>
                 <td class="cost-cell">
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol">R$</span>
                         <input class="input is-small" type="number" step="0.01" min="0"
-                               value="${product.custoUnitario.toFixed(2)}"
-                               oninput="updateProductRealtime(${index}, 'custoUnitario', parseFloat(this.value))"
-                               onchange="updateProduct(${index}, 'custoUnitario', parseFloat(this.value))"
+                               value="${product.custoBase.toFixed(2)}"
+                               oninput="updateCustoBaseRealtime(${index}, parseFloat(this.value))"
+                               onchange="updateCustoBase(${index}, parseFloat(this.value))"
                                style="flex: 1;">
+                    </div>
+                </td>
+                <td class="price-cell" style="background-color: #fef3c7;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span class="currency-symbol" style="color: #d97706;">R$</span>
+                        <input class="input is-small" type="number" step="0.01" min="0"
+                               value="${product.tributos.toFixed(2)}"
+                               oninput="updateTributosRealtime(${index}, parseFloat(this.value))"
+                               onchange="updateTributos(${index}, parseFloat(this.value))"
+                               style="flex: 1; font-weight: 600; color: #d97706; background-color: #fffbeb;"
+                               title="Tributos - Editável manualmente ou calculado automaticamente"
+                               ${tributosDisabled ? 'readonly' : ''}>
+                    </div>
+                </td>
+                <td class="cost-cell" style="background-color: #fee2e2;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span class="currency-symbol" style="color: #dc2626;">R$</span>
+                        <input class="input is-small" type="number" step="0.01" min="0"
+                               value="${product.custoTotal.toFixed(2)}"
+                               readonly
+                               style="flex: 1; font-weight: 600; color: #dc2626; background-color: #fef2f2;"
+                               title="Custo Base + Tributos">
                     </div>
                 </td>
                 <td class="price-cell">
@@ -304,6 +638,47 @@
             return row;
         }
 
+        function updateQtyEmbalagem(index, qty) {
+            if (isNaN(qty) || qty < 1) qty = 1;
+            products[index].qtdEmbalagem = qty;
+            updateTable();
+        }
+
+        function updateCustoBase(index, valor) {
+            if (isNaN(valor)) return;
+            products[index].custoBase = valor;
+            recalculateTributos(index);
+            updateTable();
+        }
+
+        function updateCustoBaseRealtime(index, valor) {
+            if (isNaN(valor)) return;
+            products[index].custoBase = valor;
+            recalculateTributos(index);
+            updateRowCalculations(index);
+        }
+        
+        function updateTributos(index, valor) {
+            if (isNaN(valor)) return;
+            products[index].tributos = valor;
+            products[index].custoTotal = products[index].custoBase + valor;
+            
+            // Atualizar detalhes de tributos como manual
+            products[index].tributosDetalhes = {
+                modo: 'manual',
+                valor: valor
+            };
+            
+            updateTable();
+        }
+
+        function updateTributosRealtime(index, valor) {
+            if (isNaN(valor)) return;
+            products[index].tributos = valor;
+            products[index].custoTotal = products[index].custoBase + valor;
+            updateRowCalculations(index);
+        }
+
         function calculateMarkup(custo, preco) {
             if (custo === 0) return 0;
             return ((preco - custo) / custo) * 100;
@@ -326,20 +701,20 @@
         }
 
         function updateFromMarkup(index, markup) {
-            const custo = products[index].custoUnitario;
+            const custo = products[index].custoTotal;
             products[index].precoVenda = custo * (1 + markup / 100);
             updateTable();
         }
 
         function updateFromMarkupRealtime(index, markup) {
             if (isNaN(markup)) return;
-            const custo = products[index].custoUnitario;
+            const custo = products[index].custoTotal;
             products[index].precoVenda = custo * (1 + markup / 100);
             updateRowCalculations(index);
         }
 
         function updateFromMargem(index, margem) {
-            const custo = products[index].custoUnitario;
+            const custo = products[index].custoTotal;
             if (margem >= 100) {
                 showToast('Margem deve ser menor que 100%', 'danger');
                 return;
@@ -350,7 +725,7 @@
 
         function updateFromMargemRealtime(index, margem) {
             if (isNaN(margem)) return;
-            const custo = products[index].custoUnitario;
+            const custo = products[index].custoTotal;
             if (margem >= 100) {
                 return;
             }
@@ -360,8 +735,8 @@
 
         function updateRowCalculations(index) {
             const product = products[index];
-            const markup = calculateMarkup(product.custoUnitario, product.precoVenda);
-            const margem = calculateMargem(product.custoUnitario, product.precoVenda);
+            const markup = calculateMarkup(product.custoTotal, product.precoVenda);
+            const margem = calculateMargem(product.custoTotal, product.precoVenda);
             
             // Find the row in the table
             const tbody = document.getElementById('productsTable');
@@ -369,32 +744,40 @@
             
             if (!row) return;
             
-            // Update custo unitario display (cell 3)
-            const custoInput = row.cells[3].querySelector('input');
-            if (custoInput && custoInput !== document.activeElement) {
-                custoInput.value = product.custoUnitario.toFixed(2);
-                custoInput.classList.add('value-updated');
-                setTimeout(() => custoInput.classList.remove('value-updated'), 500);
+            // Update custo base display (cell 5)
+            const custoBaseInput = row.cells[5].querySelector('input');
+            if (custoBaseInput && custoBaseInput !== document.activeElement) {
+                custoBaseInput.value = product.custoBase.toFixed(2);
             }
             
-            // Update preco venda display (cell 4)
-            const precoInput = row.cells[4].querySelector('input');
+            // Update tributos display (cell 6) - editável
+            const tributosInput = row.cells[6].querySelector('input');
+            if (tributosInput && tributosInput !== document.activeElement) {
+                tributosInput.value = product.tributos.toFixed(2);
+            }
+            
+            // Update custo total display (cell 7) - readonly
+            const custoTotalInput = row.cells[7].querySelector('input');
+            if (custoTotalInput) {
+                custoTotalInput.value = product.custoTotal.toFixed(2);
+            }
+            
+            // Update preco venda display (cell 8)
+            const precoInput = row.cells[8].querySelector('input');
             if (precoInput && precoInput !== document.activeElement) {
                 precoInput.value = product.precoVenda.toFixed(2);
-                precoInput.classList.add('value-updated');
-                setTimeout(() => precoInput.classList.remove('value-updated'), 500);
             }
             
-            // Update markup (cell 5)
-            const markupInput = row.cells[5].querySelector('input');
+            // Update markup (cell 9)
+            const markupInput = row.cells[9].querySelector('input');
             if (markupInput && markupInput !== document.activeElement) {
                 markupInput.value = markup.toFixed(2);
                 markupInput.className = `input is-small ${markup >= 0 ? 'positive' : 'negative'} value-updated`;
                 setTimeout(() => markupInput.classList.remove('value-updated'), 500);
             }
             
-            // Update margem (cell 6)
-            const margemInput = row.cells[6].querySelector('input');
+            // Update margem (cell 10)
+            const margemInput = row.cells[10].querySelector('input');
             if (margemInput && margemInput !== document.activeElement) {
                 margemInput.value = margem.toFixed(2);
                 margemInput.className = `input is-small ${margem >= 0 ? 'positive' : 'negative'} value-updated`;
@@ -517,10 +900,14 @@
             const data = products.map(p => ({
                 'Descrição': p.descricao,
                 'NCM': p.ncm,
-                'Custo Unitário': p.custoUnitario,
-                'Preço Venda': p.precoVenda,
-                'Markup (%)': calculateMarkup(p.custoUnitario, p.precoVenda).toFixed(2),
-                'Margem (%)': calculateMargem(p.custoUnitario, p.precoVenda).toFixed(2),
+                'Unidade': p.unidade,
+                'Qtd/Embalagem': p.qtdEmbalagem,
+                'Custo Base': p.custoBase.toFixed(2),
+                'Tributos': p.tributos.toFixed(2),
+                'Custo Total': p.custoTotal.toFixed(2),
+                'Preço Venda': p.precoVenda.toFixed(2),
+                'Markup (%)': calculateMarkup(p.custoTotal, p.precoVenda).toFixed(2),
+                'Margem (%)': calculateMargem(p.custoTotal, p.precoVenda).toFixed(2),
                 'Código EAN-13': p.ean
             }));
 
@@ -537,14 +924,18 @@
                 return;
             }
 
-            const headers = ['Descrição', 'NCM', 'Custo Unitário', 'Preço Venda', 'Markup (%)', 'Margem (%)', 'Código EAN-13'];
+            const headers = ['Descrição', 'NCM', 'Unidade', 'Qtd/Embalagem', 'Custo Base', 'Tributos', 'Custo Total', 'Preço Venda', 'Markup (%)', 'Margem (%)', 'Código EAN-13'];
             const rows = products.map(p => [
                 `"${p.descricao.replace(/"/g, '""')}"`,
                 p.ncm,
-                p.custoUnitario.toFixed(2),
+                p.unidade,
+                p.qtdEmbalagem,
+                p.custoBase.toFixed(2),
+                p.tributos.toFixed(2),
+                p.custoTotal.toFixed(2),
                 p.precoVenda.toFixed(2),
-                calculateMarkup(p.custoUnitario, p.precoVenda).toFixed(2),
-                calculateMargem(p.custoUnitario, p.precoVenda).toFixed(2),
+                calculateMarkup(p.custoTotal, p.precoVenda).toFixed(2),
+                calculateMargem(p.custoTotal, p.precoVenda).toFixed(2),
                 p.ean
             ]);
 
@@ -599,13 +990,17 @@
             // Skip header
             for (let i = 1; i < lines.length; i++) {
                 const cols = parseCSVLine(lines[i]);
-                if (cols.length >= 4) {
+                if (cols.length >= 7) {
                     addProductToList({
                         descricao: cols[0],
                         ncm: cols[1] || '',
-                        custoUnitario: cols[2],
-                        precoVenda: cols[3],
-                        ean: cols[6] || ''
+                        unidade: cols[2] || 'UN',
+                        qtdEmbalagem: cols[3] || 1,
+                        custoBase: cols[4],
+                        tributos: cols[5],
+                        custoTotal: cols[6],
+                        precoVenda: cols[7],
+                        ean: cols[10] || ''
                     });
                 }
             }
@@ -650,7 +1045,11 @@
                 addProductToList({
                     descricao: row['Descrição'] || row['Descricao'] || '',
                     ncm: row['NCM'] || '',
-                    custoUnitario: row['Custo Unitário'] || row['Custo Unitario'] || row['Custo'] || 0,
+                    unidade: row['Unidade'] || 'UN',
+                    qtdEmbalagem: row['Qtd/Embalagem'] || row['QtdEmbalagem'] || 1,
+                    custoBase: row['Custo Base'] || row['Custo'] || 0,
+                    tributos: row['Tributos'] || 0,
+                    custoTotal: row['Custo Total'] || 0,
                     precoVenda: row['Preço Venda'] || row['Preco Venda'] || row['Preço'] || 0,
                     ean: row['Código EAN-13'] || row['EAN-13'] || row['EAN'] || ''
                 });
@@ -777,6 +1176,8 @@
             const itemsPerPage = 20;
             const pages = Math.ceil(products.length / itemsPerPage);
 
+            console.log(`Gerando ${pages} página(s) de etiquetas para ${products.length} produtos`);
+
             for (let pageIndex = 0; pageIndex < pages; pageIndex++) {
                 const page = document.createElement('div');
                 page.className = 'label-page';
@@ -786,6 +1187,7 @@
 
                 for (let i = start; i < end; i++) {
                     const product = products[i];
+                    console.log(`Produto ${i+1}: ${product.descricao} - ${product.unidade}`);
                     const label = createLabelElement(product, pageIndex, i);
                     page.appendChild(label);
                 }
@@ -793,23 +1195,29 @@
                 labelsPrintArea.appendChild(page);
             }
             
-            console.log(`${pages} página(s) de etiquetas geradas com ${products.length} produtos`);
+            console.log(`✓ ${pages} página(s) de etiquetas geradas com sucesso`);
         }
 
         function createLabelElement(product, pageIndex, itemIndex) {
             const label = document.createElement('div');
             label.className = 'product-label';
 
-            // Descrição
+            // Descrição com unidade
             const description = document.createElement('div');
             description.className = 'label-description';
-            description.textContent = product.descricao || 'Sem descrição';
+            const descText = product.descricao || 'Sem descrição';
+            const unitText = product.unidade || 'UN';
+            description.textContent = `${descText} - ${unitText}`;
+            description.style.display = 'block';
+            description.style.visibility = 'visible';
             label.appendChild(description);
 
             // Preço
             const price = document.createElement('div');
             price.className = 'label-price';
             price.textContent = `R$ ${product.precoVenda.toFixed(2)}`;
+            price.style.display = 'block';
+            price.style.visibility = 'visible';
             label.appendChild(price);
 
             // Código de barras
@@ -824,6 +1232,8 @@
                 canvas.setAttribute('id', uniqueId);
                 canvas.style.maxWidth = '100%';
                 canvas.style.height = 'auto';
+                canvas.style.display = 'block';
+                canvas.style.visibility = 'visible';
                 barcodeContainer.appendChild(canvas);
                 label.appendChild(barcodeContainer);
 
@@ -851,13 +1261,13 @@
                     
                     // Verify canvas has content
                     if (canvas.width > 0 && canvas.height > 0) {
-                        console.log(`✓ Código de barras gerado: ${product.ean} (${canvas.width}x${canvas.height})`);
+                        console.log(`✓ Etiqueta gerada: ${descText} - ${unitText} (${canvas.width}x${canvas.height})`);
                     } else {
                         console.warn(`⚠ Canvas vazio para: ${product.ean}`);
                     }
                 } catch (e) {
                     console.error('❌ Erro ao gerar código de barras para:', product.descricao, e);
-                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 9pt; font-weight: bold; font-family: monospace;">
+                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 9pt; font-weight: bold; font-family: monospace; display: block; visibility: visible;">
                         ||||| ${product.ean} |||||
                     </div>`;
                 }
@@ -874,6 +1284,8 @@
                 noBarcode.style.fontSize = '8pt';
                 noBarcode.style.padding = '5px';
                 noBarcode.style.fontWeight = 'bold';
+                noBarcode.style.display = 'block';
+                noBarcode.style.visibility = 'visible';
                 barcodeContainer.appendChild(noBarcode);
                 label.appendChild(barcodeContainer);
             }
