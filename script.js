@@ -41,7 +41,7 @@
             const badge = document.getElementById('tributosModeBadge');
             
             if (tributosDisabled) {
-                helpText2.innerHTML = '<strong style="color: #dc2626;">✓ Tributos Desativados:</strong> Trabalhando sem tributos - Custo Total = Custo Base';
+                helpText2.innerHTML = '<strong style="color: #dc2626;">✓ Tributos Desativados:</strong> Trabalhando sem tributos - Custo Base com Tributo = Custo Base';
                 badge.className = 'tributos-badge';
                 badge.style.background = '#6b7280';
                 badge.textContent = 'Sem Tributos';
@@ -50,7 +50,7 @@
                 document.getElementById('tributos2026Toggle').checked = false;
                 tributos2026Mode = false;
             } else {
-                helpText2.innerHTML = '<strong>Sem Tributos:</strong> Desativa cálculo de tributos (Custo Total = Custo Base)';
+                helpText2.innerHTML = '<strong>Sem Tributos:</strong> Desativa cálculo de tributos (Custo Base com Tributo = Custo Base)';
                 badge.className = 'tributos-badge tributos-atual';
                 badge.textContent = 'Atual';
             }
@@ -61,7 +61,7 @@
             });
             updateTable();
             
-            showToast(tributosDisabled ? 'Tributos desativados! Custo Total = Custo Base' : 'Tributos reativados!');
+            showToast(tributosDisabled ? 'Tributos desativados! Custo Base com Tributo = Custo Base' : 'Tributos reativados!');
         }
 
         function recalculateTributos(index) {
@@ -71,6 +71,7 @@
                 // Sem tributos
                 product.tributos = 0;
                 product.custoTotal = product.custoBase;
+                product.subtotal = product.custoTotal * product.qtdEmbalagem;
                 product.tributosDetalhes = {
                     modo: 'desativado'
                 };
@@ -85,6 +86,7 @@
                     cbs: cbs
                 };
                 product.custoTotal = product.custoBase + product.tributos;
+                product.subtotal = product.custoTotal * product.qtdEmbalagem;
             } else {
                 // Manter tributos originais da NF-e
                 if (product.tributosDetalhes && product.tributosDetalhes.modo === 'nfe') {
@@ -106,6 +108,7 @@
                     };
                 }
                 product.custoTotal = product.custoBase + product.tributos;
+                product.subtotal = product.custoTotal * product.qtdEmbalagem;
             }
         }
 
@@ -216,6 +219,7 @@
 
                 // Calcular custo total unitário
                 const custoTotal = custoBase + tributosUnitarios;
+                const subtotal = custoTotal * 1; // qtdEmbalagem = 1 por padrão
 
                 addProductToList({
                     descricao: descricao,
@@ -225,6 +229,7 @@
                     custoBase: custoBase,
                     tributos: tributosUnitarios,
                     custoTotal: custoTotal,
+                    subtotal: subtotal,
                     precoVenda: (custoTotal * 1.3).toFixed(2), // 30% markup default sobre custo total
                     ean: ean && ean !== 'SEM GTIN' ? ean : '',
                     tributosDetalhes: {
@@ -291,6 +296,7 @@
                 custoBase: 0,
                 tributos: 0,
                 custoTotal: 0,
+                subtotal: 0,
                 precoVenda: '0.00',
                 ean: ''
             });
@@ -312,16 +318,19 @@
             }
             
             const custoTotal = custoBase + tributos;
+            const qtdEmbalagem = parseFloat(data.qtdEmbalagem) || 1;
+            const subtotal = custoTotal * qtdEmbalagem;
 
             const product = {
                 id: productIdCounter++,
                 descricao: data.descricao || '',
                 ncm: data.ncm || '',
                 unidade: data.unidade || 'UN',
-                qtdEmbalagem: parseFloat(data.qtdEmbalagem) || 1,
+                qtdEmbalagem: qtdEmbalagem,
                 custoBase: custoBase,
                 tributos: tributos,
                 custoTotal: custoTotal,
+                subtotal: subtotal,
                 precoVenda: parseFloat(data.precoVenda) || custoTotal * 1.3,
                 ean: data.ean || '',
                 selected: false,
@@ -360,6 +369,7 @@
             let totalCostBase = 0;
             let totalTributos = 0;
             let totalCost = 0;
+            let totalSubtotal = 0;
             let totalRevenue = 0;
             let totalMarkup = 0;
             let totalMargin = 0;
@@ -378,6 +388,7 @@
                 totalCostBase += product.custoBase;
                 totalTributos += product.tributos;
                 totalCost += product.custoTotal;
+                totalSubtotal += product.subtotal;
                 totalRevenue += product.precoVenda;
                 totalMarkup += calculateMarkup(product.custoTotal, product.precoVenda);
                 totalMargin += calculateMargem(product.custoTotal, product.precoVenda);
@@ -407,6 +418,7 @@
 
             // Update DOM
             document.getElementById('totalCost').textContent = totalCost.toFixed(2);
+            document.getElementById('totalSubtotal').textContent = totalSubtotal.toFixed(2);
             document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2);
             document.getElementById('totalTributos').textContent = totalTributos.toFixed(2);
             
@@ -439,7 +451,6 @@
                 profitPercentageElement.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(profitPercentage).toFixed(2)}% sobre o custo`;
             }
             
-            document.getElementById('avgMarkup').textContent = avgMarkup.toFixed(2);
             document.getElementById('avgMargin').textContent = avgMargin.toFixed(2);
             document.getElementById('totalProducts').textContent = products.length;
             document.getElementById('totalWithEAN').textContent = totalWithEAN;
@@ -559,6 +570,16 @@
                                title="Custo Base + Tributos">
                     </div>
                 </td>
+                <td class="subtotal-cell" style="background-color: #e0e7ff;">
+                    <div style="display: flex; align-items: center; gap: 5px;">
+                        <span class="currency-symbol" style="color: #4c1d95;">R$</span>
+                        <input class="input is-small" type="number" step="0.01" min="0"
+                               value="${product.subtotal.toFixed(2)}"
+                               readonly
+                               style="flex: 1; font-weight: 600; color: #4c1d95; background-color: #ede9fe;"
+                               title="Custo Base com Tributo × Qtd/Embalagem">
+                    </div>
+                </td>
                 <td class="price-cell">
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol">R$</span>
@@ -641,6 +662,7 @@
         function updateQtyEmbalagem(index, qty) {
             if (isNaN(qty) || qty < 1) qty = 1;
             products[index].qtdEmbalagem = qty;
+            products[index].subtotal = products[index].custoTotal * qty;
             updateTable();
         }
 
@@ -662,6 +684,7 @@
             if (isNaN(valor)) return;
             products[index].tributos = valor;
             products[index].custoTotal = products[index].custoBase + valor;
+            products[index].subtotal = products[index].custoTotal * products[index].qtdEmbalagem;
             
             // Atualizar detalhes de tributos como manual
             products[index].tributosDetalhes = {
@@ -676,6 +699,7 @@
             if (isNaN(valor)) return;
             products[index].tributos = valor;
             products[index].custoTotal = products[index].custoBase + valor;
+            products[index].subtotal = products[index].custoTotal * products[index].qtdEmbalagem;
             updateRowCalculations(index);
         }
 
@@ -762,22 +786,28 @@
                 custoTotalInput.value = product.custoTotal.toFixed(2);
             }
             
-            // Update preco venda display (cell 8)
-            const precoInput = row.cells[8].querySelector('input');
+            // Update subtotal display (cell 8) - readonly
+            const subtotalInput = row.cells[8].querySelector('input');
+            if (subtotalInput) {
+                subtotalInput.value = product.subtotal.toFixed(2);
+            }
+            
+            // Update preco venda display (cell 9)
+            const precoInput = row.cells[9].querySelector('input');
             if (precoInput && precoInput !== document.activeElement) {
                 precoInput.value = product.precoVenda.toFixed(2);
             }
             
-            // Update markup (cell 9)
-            const markupInput = row.cells[9].querySelector('input');
+            // Update markup (cell 10)
+            const markupInput = row.cells[10].querySelector('input');
             if (markupInput && markupInput !== document.activeElement) {
                 markupInput.value = markup.toFixed(2);
                 markupInput.className = `input is-small ${markup >= 0 ? 'positive' : 'negative'} value-updated`;
                 setTimeout(() => markupInput.classList.remove('value-updated'), 500);
             }
             
-            // Update margem (cell 10)
-            const margemInput = row.cells[10].querySelector('input');
+            // Update margem (cell 11)
+            const margemInput = row.cells[11].querySelector('input');
             if (margemInput && margemInput !== document.activeElement) {
                 margemInput.value = margem.toFixed(2);
                 margemInput.className = `input is-small ${margem >= 0 ? 'positive' : 'negative'} value-updated`;
@@ -904,7 +934,8 @@
                 'Qtd/Embalagem': p.qtdEmbalagem,
                 'Custo Base': p.custoBase.toFixed(2),
                 'Tributos': p.tributos.toFixed(2),
-                'Custo Total': p.custoTotal.toFixed(2),
+                'Custo Base com Tributo': p.custoTotal.toFixed(2),
+                'Subtotal': p.subtotal.toFixed(2),
                 'Preço Venda': p.precoVenda.toFixed(2),
                 'Markup (%)': calculateMarkup(p.custoTotal, p.precoVenda).toFixed(2),
                 'Margem (%)': calculateMargem(p.custoTotal, p.precoVenda).toFixed(2),
@@ -924,7 +955,7 @@
                 return;
             }
 
-            const headers = ['Descrição', 'NCM', 'Unidade', 'Qtd/Embalagem', 'Custo Base', 'Tributos', 'Custo Total', 'Preço Venda', 'Markup (%)', 'Margem (%)', 'Código EAN-13'];
+            const headers = ['Descrição', 'NCM', 'Unidade', 'Qtd/Embalagem', 'Custo Base', 'Tributos', 'Custo Base com Tributo', 'Subtotal', 'Preço Venda', 'Markup (%)', 'Margem (%)', 'Código EAN-13'];
             const rows = products.map(p => [
                 `"${p.descricao.replace(/"/g, '""')}"`,
                 p.ncm,
@@ -933,6 +964,7 @@
                 p.custoBase.toFixed(2),
                 p.tributos.toFixed(2),
                 p.custoTotal.toFixed(2),
+                p.subtotal.toFixed(2),
                 p.precoVenda.toFixed(2),
                 calculateMarkup(p.custoTotal, p.precoVenda).toFixed(2),
                 calculateMargem(p.custoTotal, p.precoVenda).toFixed(2),
@@ -990,7 +1022,7 @@
             // Skip header
             for (let i = 1; i < lines.length; i++) {
                 const cols = parseCSVLine(lines[i]);
-                if (cols.length >= 7) {
+                if (cols.length >= 8) {
                     addProductToList({
                         descricao: cols[0],
                         ncm: cols[1] || '',
@@ -999,8 +1031,9 @@
                         custoBase: cols[4],
                         tributos: cols[5],
                         custoTotal: cols[6],
-                        precoVenda: cols[7],
-                        ean: cols[10] || ''
+                        subtotal: cols[7],
+                        precoVenda: cols[8],
+                        ean: cols[11] || ''
                     });
                 }
             }
@@ -1049,7 +1082,8 @@
                     qtdEmbalagem: row['Qtd/Embalagem'] || row['QtdEmbalagem'] || 1,
                     custoBase: row['Custo Base'] || row['Custo'] || 0,
                     tributos: row['Tributos'] || 0,
-                    custoTotal: row['Custo Total'] || 0,
+                    custoTotal: row['Custo Base com Tributo'] || row['Custo Total'] || 0,
+                    subtotal: row['Subtotal'] || 0,
                     precoVenda: row['Preço Venda'] || row['Preco Venda'] || row['Preço'] || 0,
                     ean: row['Código EAN-13'] || row['EAN-13'] || row['EAN'] || ''
                 });
@@ -1098,6 +1132,17 @@
                 const totalBarcodes = canvases.length + svgs.length;
                 console.log(`Total de códigos de barras gerados: ${totalBarcodes} (${canvases.length} canvas, ${svgs.length} svg)`);
                 
+                // Verify descriptions
+                const descriptions = labelsPrintArea.querySelectorAll('.label-description');
+                console.log(`Total de descrições: ${descriptions.length}`);
+                descriptions.forEach((desc, idx) => {
+                    if (desc.textContent.trim() === '') {
+                        console.warn(`⚠ Descrição ${idx} está vazia!`);
+                    } else {
+                        console.log(`✓ Descrição ${idx}: ${desc.textContent.substring(0, 30)}...`);
+                    }
+                });
+                
                 // Copy labels to preview
                 const previewContent = document.getElementById('previewContent');
                 previewContent.innerHTML = labelsPrintArea.innerHTML;
@@ -1105,9 +1150,66 @@
                 // Add preview styles
                 previewContent.style.background = 'white';
                 previewContent.querySelectorAll('.label-page').forEach(page => {
-                    page.style.border = '1px solid #ddd';
+                    page.style.border = '2px solid #999';
                     page.style.marginBottom = '20px';
                     page.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    page.style.background = 'white';
+                });
+                
+                // Garantir que as etiquetas individuais tenham bordas visíveis e layout correto
+                previewContent.querySelectorAll('.product-label').forEach(label => {
+                    label.style.border = '3px solid #000';
+                    label.style.background = 'white';
+                    label.style.display = 'flex';
+                    label.style.flexDirection = 'column';
+                    label.style.height = '33mm';
+                    label.style.overflow = 'hidden';
+                    label.style.boxSizing = 'border-box';
+                });
+                
+                // Garantir que descrições sejam visíveis
+                previewContent.querySelectorAll('.label-description').forEach(desc => {
+                    desc.style.display = 'block';
+                    desc.style.visibility = 'visible';
+                    desc.style.color = '#000';
+                    desc.style.fontSize = '9pt';
+                    desc.style.fontWeight = 'bold';
+                    desc.style.lineHeight = '1.1';
+                    desc.style.wordWrap = 'break-word';
+                    desc.style.whiteSpace = 'normal';
+                    desc.style.overflow = 'hidden';
+                    desc.style.textOverflow = 'ellipsis';
+                    desc.style.maxHeight = '4.4em';
+                    desc.style.marginBottom = '1mm';
+                });
+                
+                // Garantir que preços sejam visíveis
+                previewContent.querySelectorAll('.label-price').forEach(price => {
+                    price.style.display = 'block';
+                    price.style.visibility = 'visible';
+                    price.style.color = '#000';
+                    price.style.fontSize = '14pt';
+                    price.style.fontWeight = 'bold';
+                    price.style.marginBottom = '1mm';
+                });
+                
+                // Garantir que containers de código de barras estejam corretos
+                previewContent.querySelectorAll('.label-barcode').forEach(barcode => {
+                    barcode.style.display = 'flex';
+                    barcode.style.alignItems = 'center';
+                    barcode.style.justifyContent = 'center';
+                    barcode.style.flex = '1';
+                    barcode.style.overflow = 'hidden';
+                    barcode.style.maxHeight = '60px';
+                    barcode.style.textAlign = 'center';
+                });
+                
+                // Garantir que canvas/svg de código de barras estejam corretos
+                previewContent.querySelectorAll('.label-barcode canvas, .label-barcode svg').forEach(bc => {
+                    bc.style.maxWidth = '95%';
+                    bc.style.maxHeight = '45px';
+                    bc.style.display = 'block';
+                    bc.style.margin = '0 auto';
                 });
                 
                 // Open preview modal
@@ -1116,7 +1218,9 @@
                 // Log verification
                 const previewCanvases = previewContent.querySelectorAll('canvas');
                 const previewSvgs = previewContent.querySelectorAll('svg');
+                const previewDescriptions = previewContent.querySelectorAll('.label-description');
                 console.log(`Códigos de barras no preview: ${previewCanvases.length + previewSvgs.length}`);
+                console.log(`Descrições no preview: ${previewDescriptions.length}`);
             }, 1500);
         }
 
@@ -1173,7 +1277,7 @@
             const labelsPrintArea = document.getElementById('labelsPrintArea');
             labelsPrintArea.innerHTML = '';
 
-            const itemsPerPage = 20;
+            const itemsPerPage = 18; // 2 colunas x 9 linhas (33mm cada)
             const pages = Math.ceil(products.length / itemsPerPage);
 
             console.log(`Gerando ${pages} página(s) de etiquetas para ${products.length} produtos`);
@@ -1201,6 +1305,14 @@
         function createLabelElement(product, pageIndex, itemIndex) {
             const label = document.createElement('div');
             label.className = 'product-label';
+            label.style.border = '3px solid #000';
+            label.style.background = 'white';
+            label.style.display = 'flex';
+            label.style.flexDirection = 'column';
+            label.style.height = '33mm';
+            label.style.overflow = 'hidden';
+            label.style.boxSizing = 'border-box';
+            label.style.padding = '2mm';
 
             // Descrição com unidade
             const description = document.createElement('div');
@@ -1210,6 +1322,17 @@
             description.textContent = `${descText} - ${unitText}`;
             description.style.display = 'block';
             description.style.visibility = 'visible';
+            description.style.color = '#000';
+            description.style.fontSize = '9pt';
+            description.style.fontWeight = 'bold';
+            description.style.marginBottom = '1mm';
+            description.style.marginTop = '0';
+            description.style.lineHeight = '1.1';
+            description.style.wordWrap = 'break-word';
+            description.style.whiteSpace = 'normal';
+            description.style.overflow = 'hidden';
+            description.style.textOverflow = 'ellipsis';
+            description.style.maxHeight = '4.4em';
             label.appendChild(description);
 
             // Preço
@@ -1218,11 +1341,26 @@
             price.textContent = `R$ ${product.precoVenda.toFixed(2)}`;
             price.style.display = 'block';
             price.style.visibility = 'visible';
+            price.style.color = '#000';
+            price.style.fontSize = '14pt';
+            price.style.fontWeight = 'bold';
+            price.style.marginBottom = '1mm';
+            price.style.marginTop = '0';
             label.appendChild(price);
 
             // Código de barras
             const barcodeContainer = document.createElement('div');
             barcodeContainer.className = 'label-barcode';
+            barcodeContainer.style.display = 'flex';
+            barcodeContainer.style.alignItems = 'center';
+            barcodeContainer.style.justifyContent = 'center';
+            barcodeContainer.style.flex = '1';
+            barcodeContainer.style.textAlign = 'center';
+            barcodeContainer.style.overflow = 'hidden';
+            barcodeContainer.style.maxHeight = '60px';
+            barcodeContainer.style.width = '100%';
+            barcodeContainer.style.margin = '0';
+            barcodeContainer.style.padding = '0';
 
             if (product.ean && product.ean.length === 13 && /^\d+$/.test(product.ean)) {
                 const uniqueId = `barcode-p${pageIndex}-i${itemIndex}-${product.id}`;
@@ -1230,10 +1368,16 @@
                 // Try canvas first
                 const canvas = document.createElement('canvas');
                 canvas.setAttribute('id', uniqueId);
-                canvas.style.maxWidth = '100%';
+                canvas.style.maxWidth = '95%';
+                canvas.style.maxHeight = '45px';
                 canvas.style.height = 'auto';
+                canvas.style.width = 'auto';
                 canvas.style.display = 'block';
                 canvas.style.visibility = 'visible';
+                canvas.style.margin = '0 auto';
+                canvas.style.padding = '0';
+                canvas.style.border = 'none';
+                canvas.style.boxSizing = 'border-box';
                 barcodeContainer.appendChild(canvas);
                 label.appendChild(barcodeContainer);
 
@@ -1241,15 +1385,15 @@
                 try {
                     JsBarcode(canvas, product.ean, {
                         format: "EAN13",
-                        width: 2,
-                        height: 50,
+                        width: 1.5,
+                        height: 40,
                         displayValue: true,
-                        fontSize: 12,
+                        fontSize: 10,
                         fontOptions: "bold",
                         font: "monospace",
                         textAlign: "center",
-                        textMargin: 2,
-                        margin: 5,
+                        textMargin: 1,
+                        margin: 2,
                         background: "#ffffff",
                         lineColor: "#000000",
                         valid: function(valid) {
@@ -1267,7 +1411,7 @@
                     }
                 } catch (e) {
                     console.error('❌ Erro ao gerar código de barras para:', product.descricao, e);
-                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 9pt; font-weight: bold; font-family: monospace; display: block; visibility: visible;">
+                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 8pt; font-weight: bold; font-family: monospace; display: block; visibility: visible;">
                         ||||| ${product.ean} |||||
                     </div>`;
                 }
@@ -1281,11 +1425,12 @@
                     noBarcode.style.color = '#666';
                 }
                 noBarcode.style.textAlign = 'center';
-                noBarcode.style.fontSize = '8pt';
-                noBarcode.style.padding = '5px';
+                noBarcode.style.fontSize = '7pt';
+                noBarcode.style.padding = '2px';
                 noBarcode.style.fontWeight = 'bold';
                 noBarcode.style.display = 'block';
                 noBarcode.style.visibility = 'visible';
+                noBarcode.style.margin = 'auto';
                 barcodeContainer.appendChild(noBarcode);
                 label.appendChild(barcodeContainer);
             }

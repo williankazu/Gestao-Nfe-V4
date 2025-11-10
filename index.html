@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-   <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <section class="section">
@@ -47,11 +47,11 @@
                         <label class="checkbox" style="display: flex; align-items: center; gap: 10px; padding: 1rem; background: #fef2f2; border-radius: 8px; border-left: 4px solid #ef4444;">
                             <input type="checkbox" id="semTributosToggle" onchange="toggleSemTributos()">
                             <span style="font-weight: 600; color: #991b1b;">
-                                <i class="fas fa-ban"></i> Trabalhar SEM Tributos (Custo Total = Custo Base)
+                                <i class="fas fa-ban"></i> Trabalhar SEM Tributos (Custo Base com Tributo = Custo Base)
                             </span>
                         </label>
                         <p class="help" id="semTributosHelp" style="margin-top: 0.5rem; margin-left: 1rem; color: #666;">
-                            <strong>Sem Tributos:</strong> Desativa cálculo de tributos (Custo Total = Custo Base)
+                            <strong>Sem Tributos:</strong> Desativa cálculo de tributos (Custo Base com Tributo = Custo Base)
                         </p>
                     </div>
                 </div>
@@ -80,7 +80,9 @@
                     <br>
                     <i class="fas fa-landmark"></i> <strong>Tributos:</strong> O sistema extrai ICMS, IPI, PIS e COFINS da NF-e. Ative o modo 2026 para simular IBS (26,5%) + CBS!
                     <br>
-                    <i class="fas fa-calculator"></i> <strong>Custo Total:</strong> Calculado automaticamente = Custo Base + Tributos
+                    <i class="fas fa-calculator"></i> <strong>Custo Base com Tributo:</strong> Calculado automaticamente = Custo Base + Tributos
+                    <br>
+                    <i class="fas fa-calculator"></i> <strong>Subtotal:</strong> Calculado automaticamente = Custo Base com Tributo × Qtd/Embalagem
                     <br>
                     <i class="fas fa-box"></i> <strong>Embalagens:</strong> Use "Qtd/Emb" para produtos que vêm em caixas. Ex: 1 CX de 500 parafusos por R$ 50,00 = R$ 0,10 unitário.
                     <br>
@@ -130,7 +132,8 @@
                             <th title="Quantidade de unidades por embalagem">Qtd/Emb</th>
                             <th title="Valor base do produto sem tributos">Custo Base</th>
                             <th title="Soma de todos os tributos (ICMS+IPI+PIS+COFINS ou IBS+CBS)">Tributos</th>
-                            <th title="Custo base + tributos = custo real do produto">Custo Total</th>
+                            <th title="Custo base + tributos = custo real unitário do produto">Custo Base com Tributo</th>
+                            <th title="Custo Base com Tributo × Qtd/Embalagem = valor total da embalagem">Subtotal</th>
                             <th title="💡 Digite aqui e veja Markup/Margem atualizarem automaticamente!" style="position: relative;">
                                 Preço Venda
                                 <span style="color: #fbbf24; font-size: 1.1em; margin-left: 3px;">⚡</span>
@@ -170,10 +173,21 @@
                     <div class="column is-6-mobile is-3-tablet">
                         <div class="stat-card" style="background: linear-gradient(135deg, #ef4444, #dc2626); color: white; padding: 1.5rem; border-radius: 12px; text-align: center;">
                             <div style="font-size: 0.85rem; margin-bottom: 0.5rem; opacity: 0.9;">
-                                <i class="fas fa-dollar-sign"></i> Custo Total (com Tributos)
+                                <i class="fas fa-dollar-sign"></i> Custo Base c/ Tributo
                             </div>
                             <div style="font-size: 1.5rem; font-weight: 700;">
                                 R$ <span id="totalCost">0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="column is-6-mobile is-3-tablet">
+                        <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed); color: white; padding: 1.5rem; border-radius: 12px; text-align: center;">
+                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem; opacity: 0.9;">
+                                <i class="fas fa-calculator"></i> Subtotal Geral
+                            </div>
+                            <div style="font-size: 1.5rem; font-weight: 700;">
+                                R$ <span id="totalSubtotal">0.00</span>
                             </div>
                         </div>
                     </div>
@@ -185,17 +199,6 @@
                             </div>
                             <div style="font-size: 1.5rem; font-weight: 700;">
                                 R$ <span id="totalRevenue">0.00</span>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="column is-6-mobile is-3-tablet">
-                        <div class="stat-card" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white; padding: 1.5rem; border-radius: 12px; text-align: center;">
-                            <div style="font-size: 0.85rem; margin-bottom: 0.5rem; opacity: 0.9;">
-                                <i class="fas fa-percentage"></i> Markup Médio
-                            </div>
-                            <div style="font-size: 1.5rem; font-weight: 700;">
-                                <span id="avgMarkup">0.00</span>%
                             </div>
                         </div>
                     </div>
@@ -281,7 +284,23 @@
                     <i class="fas fa-info-circle"></i> <strong>Selecione o formato de impressão desejado</strong>
                 </div>
                 <div class="notification is-warning is-light">
-                    <i class="fas fa-eye"></i> <strong>Importante:</strong> Para etiquetas, clique para ver o PREVIEW antes de imprimir! Isso garante que os códigos de barras EAN-13 sejam gerados corretamente.
+                    <i class="fas fa-eye"></i> <strong>Importante:</strong> Para etiquetas, clique em "Etiquetas de Preço" para ver o PREVIEW antes de imprimir! 
+                    <br><br>
+                    <div style="font-family: monospace; background: #f9fafb; padding: 10px; border-radius: 5px; margin: 10px 0;">
+                    ┌─────────────────────────┐<br>
+                    │ Descrição - UNIDADE     │ ← 9pt, negrito<br>
+                    │ R$ 99,99               │ ← 14pt, destaque<br>
+                    │   ╔═══════════════╗    │<br>
+                    │   ║|||||||||||||||║    │ ← Código EAN-13<br>
+                    │   ║ 1234567890123 ║    │ ← Centralizado<br>
+                    │   ╚═══════════════╝    │<br>
+                    └─────────────────────────┘<br>
+                       ↑ Borda preta 3px
+                    </div>
+                    ✓ Altura: 33mm (otimizada para código de barras)<br>
+                    ✓ Código de barras SEMPRE dentro da borda<br>
+                    ✓ Descrição limitada a 2 linhas<br>
+                    ✓ Layout 2 colunas - 18 etiquetas por página A4
                 </div>
                 <div class="columns">
                     <div class="column">
@@ -303,10 +322,10 @@
                                 <i class="fas fa-tags"></i>
                             </div>
                             <h3 class="title is-5" style="color: #10b981;">Etiquetas de Preço</h3>
-                            <p>20 etiquetas por página com descrição, preço e código de barras</p>
+                            <p>18 etiquetas por página com descrição, preço e código de barras centralizado</p>
                             <div style="margin-top: 1rem; font-size: 0.85rem; color: #666;">
                                 <i class="fas fa-check"></i> Layout 2 colunas<br>
-                                <i class="fas fa-check"></i> 20 etiquetas/página<br>
+                                <i class="fas fa-check"></i> 18 etiquetas/página (33mm altura)<br>
                                 <i class="fas fa-eye" style="color: #10b981;"></i> <strong>Com Preview!</strong>
                             </div>
                         </div>
@@ -327,6 +346,16 @@
                 <button class="delete" aria-label="close" onclick="closePreviewModal()"></button>
             </header>
             <section class="modal-card-body" style="max-height: 70vh; overflow-y: auto;">
+                <div class="notification is-success is-light" style="margin-bottom: 1rem;">
+                    <i class="fas fa-check-circle"></i> <strong>Preview das Etiquetas</strong>
+                    <br>
+                    ✓ Bordas pretas visíveis em cada etiqueta<br>
+                    ✓ Descrição completa do produto + unidade<br>
+                    ✓ Preço de venda destacado<br>
+                    ✓ Código de barras EAN-13 (quando disponível)<br>
+                    <br>
+                    <small>Se tudo estiver correto, clique em "Confirmar e Imprimir" abaixo.</small>
+                </div>
                 <div id="previewContent"></div>
             </section>
             <footer class="modal-card-foot" style="justify-content: center;">
