@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Produtos NF-e com Tributos</title>
+    <title>Gestão de Produtos NF-e com Tributos - Etiquetas Personalizadas</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css">nk
 </head>
 <body>
     <section class="section">
@@ -80,13 +80,7 @@
                     <br>
                     <i class="fas fa-landmark"></i> <strong>Tributos:</strong> O sistema extrai ICMS, IPI, PIS e COFINS da NF-e. Ative o modo 2026 para simular IBS (26,5%) + CBS!
                     <br>
-                    <i class="fas fa-calculator"></i> <strong>Custo Base com Tributo:</strong> Calculado automaticamente = Custo Base + Tributos
-                    <br>
-                    <i class="fas fa-calculator"></i> <strong>Subtotal:</strong> Calculado automaticamente = Custo Base com Tributo × Qtd/Embalagem
-                    <br>
-                    <i class="fas fa-box"></i> <strong>Embalagens:</strong> Use "Qtd/Emb" para produtos que vêm em caixas. Ex: 1 CX de 500 parafusos por R$ 50,00 = R$ 0,10 unitário.
-                    <br>
-                    <i class="fas fa-barcode"></i> <strong>Etiquetas:</strong> As etiquetas mostram a descrição, unidade e código de barras EAN-13. Use o Preview!
+                    <i class="fas fa-sliders-h"></i> <strong>NOVO!</strong> Etiquetas Personalizadas: Selecione produtos e escolha quantas etiquetas imprimir de cada um!
                 </div>
             </div>
 
@@ -134,7 +128,7 @@
                             <th title="Soma de todos os tributos (ICMS+IPI+PIS+COFINS ou IBS+CBS)">Tributos</th>
                             <th title="Custo base + tributos = custo real unitário do produto">Custo Base com Tributo</th>
                             <th title="Custo Base com Tributo × Qtd/Embalagem = valor total da embalagem">Subtotal</th>
-                            <th title="💡 Digite aqui e veja Markup/Margem atualizarem automaticamente!" style="position: relative;">
+                            <th title="💡 Digite aqui e veja Markup/Margem atualizarem automaticamente!">
                                 Preço Venda
                                 <span style="color: #fbbf24; font-size: 1.1em; margin-left: 3px;">⚡</span>
                             </th>
@@ -283,55 +277,92 @@
                 <div class="notification is-info is-light">
                     <i class="fas fa-info-circle"></i> <strong>Selecione o formato de impressão desejado</strong>
                 </div>
-                <div class="notification is-warning is-light">
-                    <i class="fas fa-eye"></i> <strong>Importante:</strong> Para etiquetas, clique em "Etiquetas de Preço" para ver o PREVIEW antes de imprimir! 
-                    <br><br>
-                    <div style="font-family: monospace; background: #f9fafb; padding: 10px; border-radius: 5px; margin: 10px 0;">
-                    ┌─────────────────────────┐<br>
-                    │ Descrição - UNIDADE     │ ← 9pt, negrito<br>
-                    │ R$ 99,99               │ ← 14pt, destaque<br>
-                    │   ╔═══════════════╗    │<br>
-                    │   ║|||||||||||||||║    │ ← Código EAN-13<br>
-                    │   ║ 1234567890123 ║    │ ← Centralizado<br>
-                    │   ╚═══════════════╝    │<br>
-                    └─────────────────────────┘<br>
-                       ↑ Borda preta 3px
-                    </div>
-                    ✓ Altura: 33mm (otimizada para código de barras)<br>
-                    ✓ Código de barras SEMPRE dentro da borda<br>
-                    ✓ Descrição limitada a 2 linhas<br>
-                    ✓ Layout 2 colunas - 18 etiquetas por página A4
-                </div>
-                <div class="columns">
-                    <div class="column">
-                        <div class="box print-option" onclick="printNormal()" style="cursor: pointer; text-align: center; transition: all 0.3s ease; height: 100%;">
+                <div class="columns is-multiline">
+                    <div class="column is-4">
+                        <div class="box print-option" onclick="printNormal()">
                             <div style="font-size: 3rem; color: #667eea; margin-bottom: 1rem;">
                                 <i class="fas fa-file-alt"></i>
                             </div>
                             <h3 class="title is-5">Impressão Padrão</h3>
-                            <p>Tabela completa com todos os dados dos produtos em formato A4</p>
-                            <div style="margin-top: 1rem; font-size: 0.85rem; color: #666;">
-                                <i class="fas fa-check"></i> Todos os campos<br>
-                                <i class="fas fa-check"></i> Formato landscape
-                            </div>
+                            <p>Tabela completa com todos os dados dos produtos</p>
                         </div>
                     </div>
-                    <div class="column">
-                        <div class="box print-option" onclick="previewLabels()" style="cursor: pointer; text-align: center; transition: all 0.3s ease; height: 100%; border: 2px solid #10b981;">
+                    <div class="column is-4">
+                        <div class="box print-option" onclick="previewLabels()" style="border: 2px solid #10b981;">
                             <div style="font-size: 3rem; color: #10b981; margin-bottom: 1rem;">
                                 <i class="fas fa-tags"></i>
                             </div>
-                            <h3 class="title is-5" style="color: #10b981;">Etiquetas de Preço</h3>
-                            <p>18 etiquetas por página com descrição, preço e código de barras centralizado</p>
-                            <div style="margin-top: 1rem; font-size: 0.85rem; color: #666;">
-                                <i class="fas fa-check"></i> Layout 2 colunas<br>
-                                <i class="fas fa-check"></i> 18 etiquetas/página (33mm altura)<br>
-                                <i class="fas fa-eye" style="color: #10b981;"></i> <strong>Com Preview!</strong>
+                            <h3 class="title is-5" style="color: #10b981;">Todas as Etiquetas</h3>
+                            <p>18 etiquetas/página de todos os produtos</p>
+                        </div>
+                    </div>
+                    <div class="column is-4">
+                        <div class="box print-option" onclick="openCustomLabelsModal()" style="border: 2px solid #f59e0b;">
+                            <div style="font-size: 3rem; color: #f59e0b; margin-bottom: 1rem;">
+                                <i class="fas fa-sliders-h"></i>
                             </div>
+                            <h3 class="title is-5" style="color: #f59e0b;">Etiquetas Personalizadas</h3>
+                            <p><strong>NOVO!</strong> Escolha produtos e quantidade</p>
                         </div>
                     </div>
                 </div>
             </section>
+        </div>
+    </div>
+
+    <!-- Modal de Etiquetas Personalizadas -->
+    <div class="modal" id="customLabelsModal">
+        <div class="modal-background" onclick="closeCustomLabelsModal()"></div>
+        <div class="modal-card wide">
+            <header class="modal-card-head" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
+                <p class="modal-card-title" style="color: white;">
+                    <i class="fas fa-sliders-h"></i> Etiquetas Personalizadas
+                </p>
+                <button class="delete" aria-label="close" onclick="closeCustomLabelsModal()"></button>
+            </header>
+            <section class="modal-card-body">
+                <div class="notification is-warning is-light">
+                    <i class="fas fa-info-circle"></i> <strong>Selecione os produtos e defina quantas etiquetas imprimir de cada um</strong>
+                    <br><small>Dica: Marque os checkboxes na tabela principal antes de abrir para selecionar automaticamente!</small>
+                </div>
+
+                <div class="field">
+                    <div class="control">
+                        <button class="button is-small is-info" onclick="selectAllCustomLabels()">
+                            <span class="icon"><i class="fas fa-check-square"></i></span>
+                            <span>Selecionar Todos</span>
+                        </button>
+                        <button class="button is-small is-light" onclick="deselectAllCustomLabels()">
+                            <span class="icon"><i class="fas fa-square"></i></span>
+                            <span>Desmarcar Todos</span>
+                        </button>
+                        <button class="button is-small is-warning" onclick="setQuantityForAll()">
+                            <span class="icon"><i class="fas fa-copy"></i></span>
+                            <span>Aplicar Quantidade para Todos</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="custom-labels-list" id="customLabelsList">
+                    <!-- Product list will be generated here -->
+                </div>
+
+                <div class="custom-labels-summary">
+                    <div>
+                        <i class="fas fa-tags"></i> Total de Etiquetas Selecionadas: 
+                        <strong id="customLabelsCount">0</strong>
+                    </div>
+                </div>
+            </section>
+            <footer class="modal-card-foot" style="justify-content: center;">
+                <button class="button is-success is-large" onclick="previewCustomLabels()">
+                    <span class="icon"><i class="fas fa-eye"></i></span>
+                    <span>Preview</span>
+                </button>
+                <button class="button is-light is-large" onclick="closeCustomLabelsModal()">
+                    <span>Cancelar</span>
+                </button>
+            </footer>
         </div>
     </div>
 

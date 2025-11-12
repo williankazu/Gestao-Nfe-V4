@@ -3,6 +3,7 @@
         let productIdCounter = 1;
         let tributos2026Mode = false;
         let tributosDisabled = false;
+        let customLabelsSelection = {}; // {productId: quantity}
 
         // Initialize
         document.getElementById('xmlFile').addEventListener('change', handleXMLUpload);
@@ -17,7 +18,6 @@
                 badge.className = 'tributos-badge tributos-2026';
                 badge.textContent = '2026';
                 
-                // Desabilitar o toggle de sem tributos
                 document.getElementById('semTributosToggle').checked = false;
                 tributosDisabled = false;
             } else {
@@ -26,7 +26,6 @@
                 badge.textContent = 'Atual';
             }
             
-            // Recalcular todos os produtos com novo modo
             products.forEach((product, index) => {
                 recalculateTributos(index);
             });
@@ -46,7 +45,6 @@
                 badge.style.background = '#6b7280';
                 badge.textContent = 'Sem Tributos';
                 
-                // Desabilitar modo 2026
                 document.getElementById('tributos2026Toggle').checked = false;
                 tributos2026Mode = false;
             } else {
@@ -55,7 +53,6 @@
                 badge.textContent = 'Atual';
             }
             
-            // Recalcular todos os produtos
             products.forEach((product, index) => {
                 recalculateTributos(index);
             });
@@ -68,7 +65,6 @@
             const product = products[index];
             
             if (tributosDisabled) {
-                // Sem tributos
                 product.tributos = 0;
                 product.custoTotal = product.custoBase;
                 product.subtotal = product.custoTotal * product.qtdEmbalagem;
@@ -76,9 +72,8 @@
                     modo: 'desativado'
                 };
             } else if (tributos2026Mode) {
-                // Reforma tributária 2026: IBS + CBS
-                const ibs = product.custoBase * 0.265; // 26,5%
-                const cbs = 0; // CBS ainda não definido, pode ser ajustado
+                const ibs = product.custoBase * 0.265;
+                const cbs = 0;
                 product.tributos = ibs + cbs;
                 product.tributosDetalhes = {
                     modo: '2026',
@@ -88,16 +83,13 @@
                 product.custoTotal = product.custoBase + product.tributos;
                 product.subtotal = product.custoTotal * product.qtdEmbalagem;
             } else {
-                // Manter tributos originais da NF-e
                 if (product.tributosDetalhes && product.tributosDetalhes.modo === 'nfe') {
-                    // Já tem tributos da NF-e, manter
                     product.tributos = 
                         (product.tributosDetalhes.icms || 0) +
                         (product.tributosDetalhes.ipi || 0) +
                         (product.tributosDetalhes.pis || 0) +
                         (product.tributosDetalhes.cofins || 0);
                 } else {
-                    // Calcular tributos aproximados (18% padrão)
                     product.tributos = product.custoBase * 0.18;
                     product.tributosDetalhes = {
                         modo: 'estimado',
@@ -130,8 +122,6 @@
         function parseXML(xmlText) {
             const parser = new DOMParser();
             const xmlDoc = parser.parseFromString(xmlText, "text/xml");
-
-            // Parse NFe products (det elements)
             const items = xmlDoc.getElementsByTagName('det');
             
             let count = 0;
@@ -146,7 +136,6 @@
                 const ncm = getXMLValue(prod, 'NCM') || '';
                 const ean = getXMLValue(prod, 'cEAN') || '';
 
-                // Extrair tributos da NF-e
                 const imposto = item.getElementsByTagName('imposto')[0];
                 let tributos = {
                     icms: 0,
@@ -156,10 +145,8 @@
                 };
 
                 if (imposto) {
-                    // ICMS
                     const icms = imposto.getElementsByTagName('ICMS')[0];
                     if (icms) {
-                        // Pode ser ICMS00, ICMS10, ICMS20, etc.
                         const icmsTypes = ['ICMS00', 'ICMS10', 'ICMS20', 'ICMS30', 'ICMS40', 'ICMS51', 'ICMS60', 'ICMS70', 'ICMS90'];
                         for (let type of icmsTypes) {
                             const icmsTag = icms.getElementsByTagName(type)[0];
@@ -170,7 +157,6 @@
                         }
                     }
 
-                    // IPI
                     const ipi = imposto.getElementsByTagName('IPI')[0];
                     if (ipi) {
                         const ipiTrib = ipi.getElementsByTagName('IPITrib')[0];
@@ -179,7 +165,6 @@
                         }
                     }
 
-                    // PIS
                     const pis = imposto.getElementsByTagName('PIS')[0];
                     if (pis) {
                         const pisTypes = ['PISAliq', 'PISNT', 'PISQtde', 'PISOutr'];
@@ -192,7 +177,6 @@
                         }
                     }
 
-                    // COFINS
                     const cofins = imposto.getElementsByTagName('COFINS')[0];
                     if (cofins) {
                         const cofinsTypes = ['COFINSAliq', 'COFINSNT', 'COFINSQtde', 'COFINSOutr'];
@@ -206,20 +190,12 @@
                     }
                 }
 
-                // Calcular tributos unitários
-                // Os tributos na NF-e são totais do item, preciso dividir pela quantidade
                 const totalTributosItem = tributos.icms + tributos.ipi + tributos.pis + tributos.cofins;
                 const tributosUnitarios = quantidade > 0 ? totalTributosItem / quantidade : 0;
-                
-                // Custo base unitário (valor da NF-e)
                 const custoBase = valorUnitario;
-                
-                // Normalizar unidade
                 const unidadeNormalizada = normalizeUnit(unidade);
-
-                // Calcular custo total unitário
                 const custoTotal = custoBase + tributosUnitarios;
-                const subtotal = custoTotal * 1; // qtdEmbalagem = 1 por padrão
+                const subtotal = custoTotal * 1;
 
                 addProductToList({
                     descricao: descricao,
@@ -230,7 +206,7 @@
                     tributos: tributosUnitarios,
                     custoTotal: custoTotal,
                     subtotal: subtotal,
-                    precoVenda: (custoTotal * 1.3).toFixed(2), // 30% markup default sobre custo total
+                    precoVenda: (custoTotal * 1.3).toFixed(2),
                     ean: ean && ean !== 'SEM GTIN' ? ean : '',
                     tributosDetalhes: {
                         modo: 'nfe',
@@ -251,34 +227,17 @@
 
         function normalizeUnit(unit) {
             if (!unit) return 'UN';
-            
             const unitUpper = unit.toUpperCase().trim();
-            
-            // Mapeamento de unidades
             const unitMap = {
-                'UNIDADE': 'UN',
-                'UND': 'UN',
-                'UNID': 'UN',
-                'PEÇA': 'PC',
-                'PECA': 'PC',
-                'PÇ': 'PC',
-                'SACO': 'SC',
-                'PACOTE': 'PCT',
-                'DUZIA': 'DZ',
-                'DÚZIA': 'DZ',
-                'METRO': 'M',
-                'METROS': 'M',
-                'QUILO': 'KG',
-                'QUILOGRAMA': 'KG',
-                'QUILOGRAMAS': 'KG',
-                'LITRO': 'L',
-                'LITROS': 'L',
-                'MILILITRO': 'ML',
-                'MILILITROS': 'ML',
-                'GALÃO': 'GALAO',
-                'GALAO': 'GALAO'
+                'UNIDADE': 'UN', 'UND': 'UN', 'UNID': 'UN',
+                'PEÇA': 'PC', 'PECA': 'PC', 'PÇ': 'PC',
+                'SACO': 'SC', 'PACOTE': 'PCT', 'DUZIA': 'DZ', 'DÚZIA': 'DZ',
+                'METRO': 'M', 'METROS': 'M',
+                'QUILO': 'KG', 'QUILOGRAMA': 'KG', 'QUILOGRAMAS': 'KG',
+                'LITRO': 'L', 'LITROS': 'L',
+                'MILILITRO': 'ML', 'MILILITROS': 'ML',
+                'GALÃO': 'GALAO', 'GALAO': 'GALAO'
             };
-            
             return unitMap[unitUpper] || unitUpper;
         }
 
@@ -308,12 +267,11 @@
             const custoBase = parseFloat(data.custoBase) || 0;
             let tributos = parseFloat(data.tributos) || 0;
             
-            // Se não tem tributos definidos, calcular
             if (tributos === 0 && custoBase > 0) {
                 if (tributos2026Mode) {
-                    tributos = custoBase * 0.265; // IBS 26,5%
+                    tributos = custoBase * 0.265;
                 } else {
-                    tributos = custoBase * 0.18; // Estimativa padrão
+                    tributos = custoBase * 0.18;
                 }
             }
             
@@ -361,7 +319,6 @@
                 tbody.appendChild(row);
             });
 
-            // Calculate and update statistics
             updateStatistics();
         }
 
@@ -376,12 +333,7 @@
             let totalWithEAN = 0;
             
             let tributosBreakdown = {
-                icms: 0,
-                ipi: 0,
-                pis: 0,
-                cofins: 0,
-                ibs: 0,
-                cbs: 0
+                icms: 0, ipi: 0, pis: 0, cofins: 0, ibs: 0, cbs: 0
             };
 
             products.forEach(product => {
@@ -397,7 +349,6 @@
                     totalWithEAN++;
                 }
                 
-                // Breakdown de tributos
                 if (product.tributosDetalhes) {
                     if (product.tributosDetalhes.modo === '2026') {
                         tributosBreakdown.ibs += product.tributosDetalhes.ibs || 0;
@@ -412,17 +363,14 @@
             });
 
             const totalProfit = totalRevenue - totalCost;
-            const avgMarkup = products.length > 0 ? totalMarkup / products.length : 0;
             const avgMargin = products.length > 0 ? totalMargin / products.length : 0;
             const profitPercentage = totalCost > 0 ? (totalProfit / totalCost) * 100 : 0;
 
-            // Update DOM
             document.getElementById('totalCost').textContent = totalCost.toFixed(2);
             document.getElementById('totalSubtotal').textContent = totalSubtotal.toFixed(2);
             document.getElementById('totalRevenue').textContent = totalRevenue.toFixed(2);
             document.getElementById('totalTributos').textContent = totalTributos.toFixed(2);
             
-            // Breakdown de tributos
             const breakdownEl = document.getElementById('tributosBreakdown');
             if (tributos2026Mode) {
                 breakdownEl.innerHTML = `IBS: R$ ${tributosBreakdown.ibs.toFixed(2)} | CBS: R$ ${tributosBreakdown.cbs.toFixed(2)}`;
@@ -430,7 +378,6 @@
                 breakdownEl.innerHTML = `ICMS: R$ ${tributosBreakdown.icms.toFixed(2)} | IPI: R$ ${tributosBreakdown.ipi.toFixed(2)} | PIS: R$ ${tributosBreakdown.pis.toFixed(2)} | COFINS: R$ ${tributosBreakdown.cofins.toFixed(2)}`;
             }
             
-            // Update profit with color indicator and icon
             const profitElement = document.getElementById('totalProfit');
             const profitCard = document.getElementById('profitCard');
             const profitIcon = document.getElementById('profitIcon');
@@ -463,16 +410,6 @@
 
             const markup = calculateMarkup(product.custoTotal, product.precoVenda);
             const margem = calculateMargem(product.custoTotal, product.precoVenda);
-            
-            // Indicadores visuais de margem
-            let margemIndicator = '';
-            if (margem >= 20) {
-                margemIndicator = '<i class="fas fa-check-circle positive" style="margin-left: 5px;" title="Boa margem"></i>';
-            } else if (margem < 10 && margem >= 0) {
-                margemIndicator = '<i class="fas fa-exclamation-triangle" style="margin-left: 5px; color: #f59e0b;" title="Margem baixa"></i>';
-            } else if (margem < 0) {
-                margemIndicator = '<i class="fas fa-times-circle negative" style="margin-left: 5px;" title="Prejuízo"></i>';
-            }
 
             row.innerHTML = `
                 <td class="no-print">
@@ -480,141 +417,97 @@
                            onchange="toggleProduct(${index})">
                 </td>
                 <td class="description-cell">
-                    <div class="description-wrapper">
-                        <input class="input is-small" type="text" 
-                               value="${escapeHtml(product.descricao)}"
-                               onchange="updateProduct(${index}, 'descricao', this.value)"
-                               style="flex: 1;">
-                        <button class="button is-small is-ghost no-print copy-btn" 
-                                onclick="copyField(${index}, 'descricao', 'Descrição')"
-                                title="Copiar descrição">
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
+                    <input class="input is-small" type="text" 
+                           value="${escapeHtml(product.descricao)}"
+                           onchange="updateProduct(${index}, 'descricao', this.value)">
                 </td>
                 <td class="ncm-cell">
-                    <div class="description-wrapper">
-                        <input class="input is-small" type="text" 
-                               value="${escapeHtml(product.ncm)}"
-                               placeholder="NCM"
-                               maxlength="8"
-                               onchange="updateProduct(${index}, 'ncm', this.value)"
-                               style="flex: 1;">
-                        <button class="button is-small is-ghost no-print copy-btn" 
-                                onclick="copyField(${index}, 'ncm', 'NCM')"
-                                title="Copiar NCM"
-                                ${!product.ncm ? 'disabled' : ''}>
-                            <i class="fas fa-copy"></i>
-                        </button>
-                    </div>
+                    <input class="input is-small" type="text" 
+                           value="${escapeHtml(product.ncm)}"
+                           placeholder="NCM"
+                           maxlength="8"
+                           onchange="updateProduct(${index}, 'ncm', this.value)">
                 </td>
-                <td class="unit-cell">
+                <td>
                     <select class="select is-small" 
-                            onchange="updateProduct(${index}, 'unidade', this.value)"
-                            style="width: 100%;">
+                            onchange="updateProduct(${index}, 'unidade', this.value)">
                         <option value="UN" ${product.unidade === 'UN' ? 'selected' : ''}>UN</option>
                         <option value="PC" ${product.unidade === 'PC' ? 'selected' : ''}>PC</option>
                         <option value="CX" ${product.unidade === 'CX' ? 'selected' : ''}>CX</option>
-                        <option value="SC" ${product.unidade === 'SC' ? 'selected' : ''}>SC</option>
-                        <option value="PCT" ${product.unidade === 'PCT' ? 'selected' : ''}>PCT</option>
-                        <option value="DZ" ${product.unidade === 'DZ' ? 'selected' : ''}>DZ</option>
-                        <option value="FARDO" ${product.unidade === 'FARDO' ? 'selected' : ''}>FARDO</option>
-                        <option value="TUBO" ${product.unidade === 'TUBO' ? 'selected' : ''}>TUBO</option>
-                        <option value="BARRA" ${product.unidade === 'BARRA' ? 'selected' : ''}>BARRA</option>
-                        <option value="M" ${product.unidade === 'M' ? 'selected' : ''}>METRO</option>
                         <option value="KG" ${product.unidade === 'KG' ? 'selected' : ''}>KG</option>
-                        <option value="L" ${product.unidade === 'L' ? 'selected' : ''}>LITRO</option>
-                        <option value="ML" ${product.unidade === 'ML' ? 'selected' : ''}>ML</option>
-                        <option value="225ML" ${product.unidade === '225ML' ? 'selected' : ''}>225ML</option>
-                        <option value="900ML" ${product.unidade === '900ML' ? 'selected' : ''}>900ML</option>
-                        <option value="GALAO" ${product.unidade === 'GALAO' ? 'selected' : ''}>GALÃO</option>
-                        <option value="LATA" ${product.unidade === 'LATA' ? 'selected' : ''}>LATA</option>
-                        <option value="CENTO" ${product.unidade === 'CENTO' ? 'selected' : ''}>CENTO</option>
+                        <option value="L" ${product.unidade === 'L' ? 'selected' : ''}>L</option>
+                        <option value="M" ${product.unidade === 'M' ? 'selected' : ''}>M</option>
                     </select>
                 </td>
-                <td class="qty-cell">
+                <td>
                     <input class="input is-small" type="number" step="1" min="1"
                            value="${product.qtdEmbalagem}"
-                           onchange="updateQtyEmbalagem(${index}, parseFloat(this.value))"
-                           title="Qtd de unidades por embalagem">
+                           onchange="updateQtyEmbalagem(${index}, parseFloat(this.value))">
                 </td>
-                <td class="cost-cell">
+                <td>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol">R$</span>
                         <input class="input is-small" type="number" step="0.01" min="0"
                                value="${product.custoBase.toFixed(2)}"
-                               oninput="updateCustoBaseRealtime(${index}, parseFloat(this.value))"
-                               onchange="updateCustoBase(${index}, parseFloat(this.value))"
-                               style="flex: 1;">
+                               onchange="updateCustoBase(${index}, parseFloat(this.value))">
                     </div>
                 </td>
-                <td class="price-cell" style="background-color: #fef3c7;">
+                <td style="background-color: #fef3c7;">
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol" style="color: #d97706;">R$</span>
                         <input class="input is-small" type="number" step="0.01" min="0"
                                value="${product.tributos.toFixed(2)}"
-                               oninput="updateTributosRealtime(${index}, parseFloat(this.value))"
                                onchange="updateTributos(${index}, parseFloat(this.value))"
-                               style="flex: 1; font-weight: 600; color: #d97706; background-color: #fffbeb;"
-                               title="Tributos - Editável manualmente ou calculado automaticamente"
+                               style="font-weight: 600; color: #d97706; background-color: #fffbeb;"
                                ${tributosDisabled ? 'readonly' : ''}>
                     </div>
                 </td>
-                <td class="cost-cell" style="background-color: #fee2e2;">
+                <td style="background-color: #fee2e2;">
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol" style="color: #dc2626;">R$</span>
                         <input class="input is-small" type="number" step="0.01" min="0"
                                value="${product.custoTotal.toFixed(2)}"
                                readonly
-                               style="flex: 1; font-weight: 600; color: #dc2626; background-color: #fef2f2;"
-                               title="Custo Base + Tributos">
+                               style="font-weight: 600; color: #dc2626; background-color: #fef2f2;">
                     </div>
                 </td>
-                <td class="subtotal-cell" style="background-color: #e0e7ff;">
+                <td style="background-color: #e0e7ff;">
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol" style="color: #4c1d95;">R$</span>
                         <input class="input is-small" type="number" step="0.01" min="0"
                                value="${product.subtotal.toFixed(2)}"
                                readonly
-                               style="flex: 1; font-weight: 600; color: #4c1d95; background-color: #ede9fe;"
-                               title="Custo Base com Tributo × Qtd/Embalagem">
+                               style="font-weight: 600; color: #4c1d95; background-color: #ede9fe;">
                     </div>
                 </td>
-                <td class="price-cell">
+                <td>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <span class="currency-symbol">R$</span>
                         <input class="input is-small" type="number" step="0.01" min="0"
                                value="${product.precoVenda.toFixed(2)}"
-                               oninput="updateProductRealtime(${index}, 'precoVenda', parseFloat(this.value))"
-                               onchange="updateProduct(${index}, 'precoVenda', parseFloat(this.value))"
-                               style="flex: 1;">
+                               onchange="updateProduct(${index}, 'precoVenda', parseFloat(this.value))">
                     </div>
                 </td>
-                <td class="markup-cell">
+                <td>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <input class="input is-small ${markup >= 0 ? 'positive' : 'negative'}" 
                                type="number" step="0.01"
                                value="${markup.toFixed(2)}"
-                               oninput="updateFromMarkupRealtime(${index}, parseFloat(this.value))"
-                               onchange="updateFromMarkup(${index}, parseFloat(this.value))"
-                               style="flex: 1;">
+                               onchange="updateFromMarkup(${index}, parseFloat(this.value))">
                         <span class="percent-symbol">%</span>
                     </div>
                 </td>
-                <td class="margin-cell">
+                <td>
                     <div style="display: flex; align-items: center; gap: 5px;">
                         <input class="input is-small ${margem >= 0 ? 'positive' : 'negative'}" 
                                type="number" step="0.01"
                                value="${margem.toFixed(2)}"
-                               oninput="updateFromMargemRealtime(${index}, parseFloat(this.value))"
-                               onchange="updateFromMargem(${index}, parseFloat(this.value))"
-                               style="flex: 1;">
+                               onchange="updateFromMargem(${index}, parseFloat(this.value))">
                         <span class="percent-symbol">%</span>
-                        ${margemIndicator}
                     </div>
                 </td>
-                <td class="ean-cell">
-                    <div class="field has-addons">
+                <td>
+                    <div class="field has-addons" style="margin-bottom: 0;">
                         <div class="control is-expanded">
                             <input class="input is-small" type="text" 
                                    value="${product.ean}"
@@ -623,17 +516,8 @@
                                    onchange="updateProduct(${index}, 'ean', this.value)">
                         </div>
                         <div class="control no-print">
-                            <button class="button is-small is-ghost copy-btn" 
-                                    onclick="copyField(${index}, 'ean', 'EAN-13')"
-                                    title="Copiar EAN-13"
-                                    ${!product.ean ? 'disabled' : ''}>
-                                <i class="fas fa-copy"></i>
-                            </button>
-                        </div>
-                        <div class="control no-print">
                             <button class="button is-small is-info" 
-                                    onclick="generateEAN13(${index})"
-                                    title="Gerar EAN-13">
+                                    onclick="generateEAN13(${index})">
                                 <i class="fas fa-sync"></i>
                             </button>
                         </div>
@@ -643,19 +527,14 @@
                     <svg id="barcode-${product.id}"></svg>
                 </td>
                 <td class="no-print">
-                    <div class="action-buttons">
-                        <button class="button is-small is-danger" 
-                                onclick="deleteProduct(${index})"
-                                title="Excluir">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
+                    <button class="button is-small is-danger" 
+                            onclick="deleteProduct(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </td>
             `;
 
-            // Generate barcode after DOM insertion
             setTimeout(() => generateBarcode(product), 0);
-
             return row;
         }
 
@@ -672,35 +551,17 @@
             recalculateTributos(index);
             updateTable();
         }
-
-        function updateCustoBaseRealtime(index, valor) {
-            if (isNaN(valor)) return;
-            products[index].custoBase = valor;
-            recalculateTributos(index);
-            updateRowCalculations(index);
-        }
         
         function updateTributos(index, valor) {
             if (isNaN(valor)) return;
             products[index].tributos = valor;
             products[index].custoTotal = products[index].custoBase + valor;
             products[index].subtotal = products[index].custoTotal * products[index].qtdEmbalagem;
-            
-            // Atualizar detalhes de tributos como manual
             products[index].tributosDetalhes = {
                 modo: 'manual',
                 valor: valor
             };
-            
             updateTable();
-        }
-
-        function updateTributosRealtime(index, valor) {
-            if (isNaN(valor)) return;
-            products[index].tributos = valor;
-            products[index].custoTotal = products[index].custoBase + valor;
-            products[index].subtotal = products[index].custoTotal * products[index].qtdEmbalagem;
-            updateRowCalculations(index);
         }
 
         function calculateMarkup(custo, preco) {
@@ -718,23 +579,10 @@
             updateTable();
         }
 
-        function updateProductRealtime(index, field, value) {
-            if (isNaN(value)) return;
-            products[index][field] = value;
-            updateRowCalculations(index);
-        }
-
         function updateFromMarkup(index, markup) {
             const custo = products[index].custoTotal;
             products[index].precoVenda = custo * (1 + markup / 100);
             updateTable();
-        }
-
-        function updateFromMarkupRealtime(index, markup) {
-            if (isNaN(markup)) return;
-            const custo = products[index].custoTotal;
-            products[index].precoVenda = custo * (1 + markup / 100);
-            updateRowCalculations(index);
         }
 
         function updateFromMargem(index, margem) {
@@ -747,82 +595,12 @@
             updateTable();
         }
 
-        function updateFromMargemRealtime(index, margem) {
-            if (isNaN(margem)) return;
-            const custo = products[index].custoTotal;
-            if (margem >= 100) {
-                return;
-            }
-            products[index].precoVenda = custo / (1 - margem / 100);
-            updateRowCalculations(index);
-        }
-
-        function updateRowCalculations(index) {
-            const product = products[index];
-            const markup = calculateMarkup(product.custoTotal, product.precoVenda);
-            const margem = calculateMargem(product.custoTotal, product.precoVenda);
-            
-            // Find the row in the table
-            const tbody = document.getElementById('productsTable');
-            const row = tbody.children[index];
-            
-            if (!row) return;
-            
-            // Update custo base display (cell 5)
-            const custoBaseInput = row.cells[5].querySelector('input');
-            if (custoBaseInput && custoBaseInput !== document.activeElement) {
-                custoBaseInput.value = product.custoBase.toFixed(2);
-            }
-            
-            // Update tributos display (cell 6) - editável
-            const tributosInput = row.cells[6].querySelector('input');
-            if (tributosInput && tributosInput !== document.activeElement) {
-                tributosInput.value = product.tributos.toFixed(2);
-            }
-            
-            // Update custo total display (cell 7) - readonly
-            const custoTotalInput = row.cells[7].querySelector('input');
-            if (custoTotalInput) {
-                custoTotalInput.value = product.custoTotal.toFixed(2);
-            }
-            
-            // Update subtotal display (cell 8) - readonly
-            const subtotalInput = row.cells[8].querySelector('input');
-            if (subtotalInput) {
-                subtotalInput.value = product.subtotal.toFixed(2);
-            }
-            
-            // Update preco venda display (cell 9)
-            const precoInput = row.cells[9].querySelector('input');
-            if (precoInput && precoInput !== document.activeElement) {
-                precoInput.value = product.precoVenda.toFixed(2);
-            }
-            
-            // Update markup (cell 10)
-            const markupInput = row.cells[10].querySelector('input');
-            if (markupInput && markupInput !== document.activeElement) {
-                markupInput.value = markup.toFixed(2);
-                markupInput.className = `input is-small ${markup >= 0 ? 'positive' : 'negative'} value-updated`;
-                setTimeout(() => markupInput.classList.remove('value-updated'), 500);
-            }
-            
-            // Update margem (cell 11)
-            const margemInput = row.cells[11].querySelector('input');
-            if (margemInput && margemInput !== document.activeElement) {
-                margemInput.value = margem.toFixed(2);
-                margemInput.className = `input is-small ${margem >= 0 ? 'positive' : 'negative'} value-updated`;
-                setTimeout(() => margemInput.classList.remove('value-updated'), 500);
-            }
-        }
-
         function generateEAN13(index) {
-            // Generate a random EAN-13 (with proper check digit)
             let ean = '';
             for (let i = 0; i < 12; i++) {
                 ean += Math.floor(Math.random() * 10);
             }
             
-            // Calculate check digit
             let sum = 0;
             for (let i = 0; i < 12; i++) {
                 sum += parseInt(ean[i]) * (i % 2 === 0 ? 1 : 3);
@@ -833,22 +611,6 @@
             products[index].ean = ean;
             updateTable();
             showToast('Código EAN-13 gerado com sucesso!');
-        }
-
-        function copyField(index, fieldName, displayName) {
-            const text = products[index][fieldName];
-            
-            if (!text) {
-                showToast(`${displayName} está vazio`, 'danger');
-                return;
-            }
-            
-            navigator.clipboard.writeText(text).then(() => {
-                showToast(`${displayName} copiado com sucesso!`);
-            }).catch(err => {
-                console.error('Erro ao copiar:', err);
-                showToast(`Erro ao copiar ${displayName}`, 'danger');
-            });
         }
 
         function showToast(message, type = 'success') {
@@ -1008,7 +770,6 @@
                 reader.readAsBinaryString(file);
             }
 
-            // Reset input
             event.target.value = '';
         }
 
@@ -1019,7 +780,6 @@
                 return;
             }
 
-            // Skip header
             for (let i = 1; i < lines.length; i++) {
                 const cols = parseCSVLine(lines[i]);
                 if (cols.length >= 8) {
@@ -1120,34 +880,12 @@
             closePrintModal();
             showToast('Gerando preview das etiquetas...', 'success');
             
-            // Generate labels
-            generateLabels();
+            generateLabels(products);
             
-            // Wait longer for barcodes to render completely
             setTimeout(() => {
-                // Verify barcodes were generated
-                const labelsPrintArea = document.getElementById('labelsPrintArea');
-                const canvases = labelsPrintArea.querySelectorAll('canvas');
-                const svgs = labelsPrintArea.querySelectorAll('svg');
-                const totalBarcodes = canvases.length + svgs.length;
-                console.log(`Total de códigos de barras gerados: ${totalBarcodes} (${canvases.length} canvas, ${svgs.length} svg)`);
-                
-                // Verify descriptions
-                const descriptions = labelsPrintArea.querySelectorAll('.label-description');
-                console.log(`Total de descrições: ${descriptions.length}`);
-                descriptions.forEach((desc, idx) => {
-                    if (desc.textContent.trim() === '') {
-                        console.warn(`⚠ Descrição ${idx} está vazia!`);
-                    } else {
-                        console.log(`✓ Descrição ${idx}: ${desc.textContent.substring(0, 30)}...`);
-                    }
-                });
-                
-                // Copy labels to preview
                 const previewContent = document.getElementById('previewContent');
-                previewContent.innerHTML = labelsPrintArea.innerHTML;
+                previewContent.innerHTML = document.getElementById('labelsPrintArea').innerHTML;
                 
-                // Add preview styles
                 previewContent.style.background = 'white';
                 previewContent.querySelectorAll('.label-page').forEach(page => {
                     page.style.border = '2px solid #999';
@@ -1156,71 +894,7 @@
                     page.style.background = 'white';
                 });
                 
-                // Garantir que as etiquetas individuais tenham bordas visíveis e layout correto
-                previewContent.querySelectorAll('.product-label').forEach(label => {
-                    label.style.border = '3px solid #000';
-                    label.style.background = 'white';
-                    label.style.display = 'flex';
-                    label.style.flexDirection = 'column';
-                    label.style.height = '33mm';
-                    label.style.overflow = 'hidden';
-                    label.style.boxSizing = 'border-box';
-                });
-                
-                // Garantir que descrições sejam visíveis
-                previewContent.querySelectorAll('.label-description').forEach(desc => {
-                    desc.style.display = 'block';
-                    desc.style.visibility = 'visible';
-                    desc.style.color = '#000';
-                    desc.style.fontSize = '9pt';
-                    desc.style.fontWeight = 'bold';
-                    desc.style.lineHeight = '1.1';
-                    desc.style.wordWrap = 'break-word';
-                    desc.style.whiteSpace = 'normal';
-                    desc.style.overflow = 'hidden';
-                    desc.style.textOverflow = 'ellipsis';
-                    desc.style.maxHeight = '4.4em';
-                    desc.style.marginBottom = '1mm';
-                });
-                
-                // Garantir que preços sejam visíveis
-                previewContent.querySelectorAll('.label-price').forEach(price => {
-                    price.style.display = 'block';
-                    price.style.visibility = 'visible';
-                    price.style.color = '#000';
-                    price.style.fontSize = '14pt';
-                    price.style.fontWeight = 'bold';
-                    price.style.marginBottom = '1mm';
-                });
-                
-                // Garantir que containers de código de barras estejam corretos
-                previewContent.querySelectorAll('.label-barcode').forEach(barcode => {
-                    barcode.style.display = 'flex';
-                    barcode.style.alignItems = 'center';
-                    barcode.style.justifyContent = 'center';
-                    barcode.style.flex = '1';
-                    barcode.style.overflow = 'hidden';
-                    barcode.style.maxHeight = '60px';
-                    barcode.style.textAlign = 'center';
-                });
-                
-                // Garantir que canvas/svg de código de barras estejam corretos
-                previewContent.querySelectorAll('.label-barcode canvas, .label-barcode svg').forEach(bc => {
-                    bc.style.maxWidth = '95%';
-                    bc.style.maxHeight = '45px';
-                    bc.style.display = 'block';
-                    bc.style.margin = '0 auto';
-                });
-                
-                // Open preview modal
                 document.getElementById('previewModal').classList.add('is-active');
-                
-                // Log verification
-                const previewCanvases = previewContent.querySelectorAll('canvas');
-                const previewSvgs = previewContent.querySelectorAll('svg');
-                const previewDescriptions = previewContent.querySelectorAll('.label-description');
-                console.log(`Códigos de barras no preview: ${previewCanvases.length + previewSvgs.length}`);
-                console.log(`Descrições no preview: ${previewDescriptions.length}`);
             }, 1500);
         }
 
@@ -1228,26 +902,8 @@
             closePreviewModal();
             showToast('Preparando impressão...', 'success');
             
-            // Give extra time for browser to prepare print
             setTimeout(() => {
                 document.body.classList.add('printing-labels');
-                
-                // Verify barcodes before printing
-                const printArea = document.getElementById('labelsPrintArea');
-                const canvases = printArea.querySelectorAll('canvas');
-                const svgs = printArea.querySelectorAll('svg');
-                const totalBarcodes = canvases.length + svgs.length;
-                
-                console.log(`Imprimindo ${totalBarcodes} códigos de barras (${canvases.length} canvas, ${svgs.length} svg)`);
-                
-                canvases.forEach((canvas, idx) => {
-                    if (canvas.width === 0 || canvas.height === 0) {
-                        console.warn(`Canvas ${idx} pode estar vazio`);
-                    } else {
-                        console.log(`Canvas ${idx}: ${canvas.width}x${canvas.height}`);
-                    }
-                });
-                
                 setTimeout(() => {
                     window.print();
                     setTimeout(() => {
@@ -1257,11 +913,11 @@
             }, 500);
         }
 
-        // Close modal with ESC key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closePrintModal();
                 closePreviewModal();
+                closeCustomLabelsModal();
             }
         });
 
@@ -1273,115 +929,55 @@
             }, 100);
         }
 
-        function generateLabels() {
+        function generateLabels(productsList) {
             const labelsPrintArea = document.getElementById('labelsPrintArea');
             labelsPrintArea.innerHTML = '';
 
-            const itemsPerPage = 18; // 2 colunas x 9 linhas (33mm cada)
-            const pages = Math.ceil(products.length / itemsPerPage);
-
-            console.log(`Gerando ${pages} página(s) de etiquetas para ${products.length} produtos`);
+            const itemsPerPage = 18;
+            const pages = Math.ceil(productsList.length / itemsPerPage);
 
             for (let pageIndex = 0; pageIndex < pages; pageIndex++) {
                 const page = document.createElement('div');
                 page.className = 'label-page';
 
                 const start = pageIndex * itemsPerPage;
-                const end = Math.min(start + itemsPerPage, products.length);
+                const end = Math.min(start + itemsPerPage, productsList.length);
 
                 for (let i = start; i < end; i++) {
-                    const product = products[i];
-                    console.log(`Produto ${i+1}: ${product.descricao} - ${product.unidade}`);
+                    const product = productsList[i];
                     const label = createLabelElement(product, pageIndex, i);
                     page.appendChild(label);
                 }
 
                 labelsPrintArea.appendChild(page);
             }
-            
-            console.log(`✓ ${pages} página(s) de etiquetas geradas com sucesso`);
         }
 
         function createLabelElement(product, pageIndex, itemIndex) {
             const label = document.createElement('div');
             label.className = 'product-label';
-            label.style.border = '3px solid #000';
-            label.style.background = 'white';
-            label.style.display = 'flex';
-            label.style.flexDirection = 'column';
-            label.style.height = '33mm';
-            label.style.overflow = 'hidden';
-            label.style.boxSizing = 'border-box';
-            label.style.padding = '2mm';
 
-            // Descrição com unidade
             const description = document.createElement('div');
             description.className = 'label-description';
-            const descText = product.descricao || 'Sem descrição';
-            const unitText = product.unidade || 'UN';
-            description.textContent = `${descText} - ${unitText}`;
-            description.style.display = 'block';
-            description.style.visibility = 'visible';
-            description.style.color = '#000';
-            description.style.fontSize = '9pt';
-            description.style.fontWeight = 'bold';
-            description.style.marginBottom = '1mm';
-            description.style.marginTop = '0';
-            description.style.lineHeight = '1.1';
-            description.style.wordWrap = 'break-word';
-            description.style.whiteSpace = 'normal';
-            description.style.overflow = 'hidden';
-            description.style.textOverflow = 'ellipsis';
-            description.style.maxHeight = '4.4em';
+            description.textContent = `${product.descricao || 'Sem descrição'} - ${product.unidade || 'UN'}`;
             label.appendChild(description);
 
-            // Preço
             const price = document.createElement('div');
             price.className = 'label-price';
             price.textContent = `R$ ${product.precoVenda.toFixed(2)}`;
-            price.style.display = 'block';
-            price.style.visibility = 'visible';
-            price.style.color = '#000';
-            price.style.fontSize = '14pt';
-            price.style.fontWeight = 'bold';
-            price.style.marginBottom = '1mm';
-            price.style.marginTop = '0';
             label.appendChild(price);
 
-            // Código de barras
             const barcodeContainer = document.createElement('div');
             barcodeContainer.className = 'label-barcode';
-            barcodeContainer.style.display = 'flex';
-            barcodeContainer.style.alignItems = 'center';
-            barcodeContainer.style.justifyContent = 'center';
-            barcodeContainer.style.flex = '1';
-            barcodeContainer.style.textAlign = 'center';
-            barcodeContainer.style.overflow = 'hidden';
-            barcodeContainer.style.maxHeight = '60px';
-            barcodeContainer.style.width = '100%';
-            barcodeContainer.style.margin = '0';
-            barcodeContainer.style.padding = '0';
 
             if (product.ean && product.ean.length === 13 && /^\d+$/.test(product.ean)) {
                 const uniqueId = `barcode-p${pageIndex}-i${itemIndex}-${product.id}`;
                 
-                // Try canvas first
                 const canvas = document.createElement('canvas');
                 canvas.setAttribute('id', uniqueId);
-                canvas.style.maxWidth = '95%';
-                canvas.style.maxHeight = '45px';
-                canvas.style.height = 'auto';
-                canvas.style.width = 'auto';
-                canvas.style.display = 'block';
-                canvas.style.visibility = 'visible';
-                canvas.style.margin = '0 auto';
-                canvas.style.padding = '0';
-                canvas.style.border = 'none';
-                canvas.style.boxSizing = 'border-box';
                 barcodeContainer.appendChild(canvas);
                 label.appendChild(barcodeContainer);
 
-                // Generate barcode using canvas
                 try {
                     JsBarcode(canvas, product.ean, {
                         format: "EAN13",
@@ -1395,47 +991,199 @@
                         textMargin: 1,
                         margin: 2,
                         background: "#ffffff",
-                        lineColor: "#000000",
-                        valid: function(valid) {
-                            if (!valid) {
-                                console.error('EAN inválido:', product.ean);
-                            }
-                        }
+                        lineColor: "#000000"
                     });
-                    
-                    // Verify canvas has content
-                    if (canvas.width > 0 && canvas.height > 0) {
-                        console.log(`✓ Etiqueta gerada: ${descText} - ${unitText} (${canvas.width}x${canvas.height})`);
-                    } else {
-                        console.warn(`⚠ Canvas vazio para: ${product.ean}`);
-                    }
                 } catch (e) {
-                    console.error('❌ Erro ao gerar código de barras para:', product.descricao, e);
-                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 8pt; font-weight: bold; font-family: monospace; display: block; visibility: visible;">
-                        ||||| ${product.ean} |||||
-                    </div>`;
+                    console.error('Erro ao gerar código de barras:', e);
+                    barcodeContainer.innerHTML = `<div style="text-align: center; color: #000; font-size: 8pt; font-weight: bold;">||||| ${product.ean} |||||</div>`;
                 }
             } else {
                 const noBarcode = document.createElement('div');
-                if (product.ean) {
-                    noBarcode.textContent = `EAN inválido: ${product.ean}`;
-                    noBarcode.style.color = '#d32f2f';
-                } else {
-                    noBarcode.textContent = 'Sem código EAN';
-                    noBarcode.style.color = '#666';
-                }
+                noBarcode.textContent = product.ean ? `EAN inválido: ${product.ean}` : 'Sem código EAN';
                 noBarcode.style.textAlign = 'center';
                 noBarcode.style.fontSize = '7pt';
-                noBarcode.style.padding = '2px';
-                noBarcode.style.fontWeight = 'bold';
-                noBarcode.style.display = 'block';
-                noBarcode.style.visibility = 'visible';
-                noBarcode.style.margin = 'auto';
+                noBarcode.style.color = product.ean ? '#d32f2f' : '#666';
                 barcodeContainer.appendChild(noBarcode);
                 label.appendChild(barcodeContainer);
             }
 
             return label;
+        }
+
+        // Custom Labels Modal Functions
+        function openCustomLabelsModal() {
+            closePrintModal();
+            
+            if (products.length === 0) {
+                showToast('Nenhum produto disponível', 'danger');
+                return;
+            }
+
+            // Initialize selection from already selected products
+            customLabelsSelection = {};
+            products.forEach(product => {
+                if (product.selected) {
+                    customLabelsSelection[product.id] = 1;
+                }
+            });
+
+            renderCustomLabelsList();
+            document.getElementById('customLabelsModal').classList.add('is-active');
+        }
+
+        function closeCustomLabelsModal() {
+            document.getElementById('customLabelsModal').classList.remove('is-active');
+        }
+
+        function renderCustomLabelsList() {
+            const container = document.getElementById('customLabelsList');
+            container.innerHTML = '';
+
+            products.forEach(product => {
+                const item = document.createElement('div');
+                item.className = 'custom-label-item';
+                if (customLabelsSelection[product.id]) {
+                    item.classList.add('selected');
+                }
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.className = 'custom-label-checkbox';
+                checkbox.checked = !!customLabelsSelection[product.id];
+                checkbox.onchange = () => toggleCustomLabel(product.id);
+
+                const info = document.createElement('div');
+                info.className = 'custom-label-info';
+
+                const name = document.createElement('div');
+                name.className = 'custom-label-name';
+                name.textContent = product.descricao;
+
+                const details = document.createElement('div');
+                details.className = 'custom-label-details';
+                details.innerHTML = `
+                    <strong>${product.unidade}</strong> | 
+                    R$ ${product.precoVenda.toFixed(2)} | 
+                    ${product.ean ? `EAN: ${product.ean}` : 'Sem EAN'}
+                `;
+
+                info.appendChild(name);
+                info.appendChild(details);
+
+                const quantityInput = document.createElement('input');
+                quantityInput.type = 'number';
+                quantityInput.className = 'input is-small custom-label-quantity';
+                quantityInput.min = '1';
+                quantityInput.max = '999';
+                quantityInput.value = customLabelsSelection[product.id] || 1;
+                quantityInput.onchange = (e) => updateCustomLabelQuantity(product.id, parseInt(e.target.value));
+                quantityInput.disabled = !customLabelsSelection[product.id];
+
+                item.appendChild(checkbox);
+                item.appendChild(info);
+                item.appendChild(quantityInput);
+
+                container.appendChild(item);
+            });
+
+            updateCustomLabelsCount();
+        }
+
+        function toggleCustomLabel(productId) {
+            if (customLabelsSelection[productId]) {
+                delete customLabelsSelection[productId];
+            } else {
+                customLabelsSelection[productId] = 1;
+            }
+            renderCustomLabelsList();
+        }
+
+        function updateCustomLabelQuantity(productId, quantity) {
+            if (quantity < 1) quantity = 1;
+            if (quantity > 999) quantity = 999;
+            
+            if (customLabelsSelection[productId]) {
+                customLabelsSelection[productId] = quantity;
+                updateCustomLabelsCount();
+            }
+        }
+
+        function updateCustomLabelsCount() {
+            let total = 0;
+            Object.values(customLabelsSelection).forEach(qty => {
+                total += qty;
+            });
+            document.getElementById('customLabelsCount').textContent = total;
+        }
+
+        function selectAllCustomLabels() {
+            products.forEach(product => {
+                if (!customLabelsSelection[product.id]) {
+                    customLabelsSelection[product.id] = 1;
+                }
+            });
+            renderCustomLabelsList();
+        }
+
+        function deselectAllCustomLabels() {
+            customLabelsSelection = {};
+            renderCustomLabelsList();
+        }
+
+        function setQuantityForAll() {
+            const qty = prompt('Digite a quantidade de etiquetas para todos os produtos selecionados:', '1');
+            if (qty === null) return;
+            
+            const quantity = parseInt(qty);
+            if (isNaN(quantity) || quantity < 1) {
+                showToast('Quantidade inválida', 'danger');
+                return;
+            }
+
+            Object.keys(customLabelsSelection).forEach(productId => {
+                customLabelsSelection[productId] = quantity;
+            });
+            
+            renderCustomLabelsList();
+            showToast(`Quantidade ${quantity} aplicada para todos os selecionados!`);
+        }
+
+        function previewCustomLabels() {
+            if (Object.keys(customLabelsSelection).length === 0) {
+                showToast('Selecione pelo menos um produto', 'danger');
+                return;
+            }
+
+            closeCustomLabelsModal();
+            showToast('Gerando preview das etiquetas personalizadas...', 'success');
+
+            // Build list of products with repetitions
+            const labelsList = [];
+            products.forEach(product => {
+                const quantity = customLabelsSelection[product.id];
+                if (quantity) {
+                    for (let i = 0; i < quantity; i++) {
+                        labelsList.push(product);
+                    }
+                }
+            });
+
+            generateLabels(labelsList);
+
+            setTimeout(() => {
+                const previewContent = document.getElementById('previewContent');
+                previewContent.innerHTML = document.getElementById('labelsPrintArea').innerHTML;
+                
+                previewContent.style.background = 'white';
+                previewContent.querySelectorAll('.label-page').forEach(page => {
+                    page.style.border = '2px solid #999';
+                    page.style.marginBottom = '20px';
+                    page.style.boxShadow = '0 2px 8px rgba(0,0,0,0.1)';
+                    page.style.background = 'white';
+                });
+                
+                document.getElementById('previewModal').classList.add('is-active');
+            }, 1500);
         }
 
         // Initialize empty state

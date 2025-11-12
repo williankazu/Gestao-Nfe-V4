@@ -185,349 +185,9 @@
                 background: white;
             }
             .no-print {
-                display: none;
-            }
-            .container {
-                max-width: 100%;
-            }
-            .product-table {
-                font-size: 10pt;
-            }
-            .box {
-                box-shadow: none;
-            }
-            .currency-symbol, .percent-symbol {
-                color: #000 !important;
-            }
-        }
-
-        @media (max-width: 768px) {
-            .product-table {
-                font-size: 0.75rem;
-            }
-            .product-table input {
-                font-size: 0.8rem;
-                padding: 0.4rem 0.5rem;
-                min-width: 70px;
-            }
-            .product-table input[type="text"] {
-                min-width: 120px;
-            }
-            .product-table input[type="number"] {
-                min-width: 85px;
-            }
-            .description-cell input {
-                min-width: 180px;
-            }
-            .currency-symbol, .percent-symbol {
-                font-size: 0.8rem;
-            }
-            .button {
-                font-size: 0.85rem;
-                padding: 0.5rem 0.75rem;
-            }
-            .container {
-                padding: 15px 10px;
-            }
-            .main-title {
-                font-size: 1.5rem;
-            }
-            .buttons {
-                flex-direction: column;
-            }
-            .buttons .button {
-                width: 100%;
-            }
-            .stat-badge {
-                font-size: 0.75rem;
-                padding: 0.2rem 0.5rem;
-            }
-            .stat-card {
-                padding: 1rem !important;
-            }
-            .stat-card > div:first-child {
-                font-size: 0.75rem !important;
-            }
-            .stat-card > div:last-child {
-                font-size: 1.2rem !important;
-            }
-            .modal-card {
-                width: 95%;
-            }
-            .print-option {
-                padding: 1rem;
-            }
-            .print-option h3 {
-                font-size: 1rem;
-            }
-            .print-option p {
-                font-size: 0.85rem;
-            }
-        }
-
-        .positive {
-            color: var(--success-color);
-            font-weight: 600;
-            background-color: #f0fdf4;
-        }
-
-        .negative {
-            color: var(--danger-color);
-            font-weight: 600;
-            background-color: #fef2f2;
-        }
-
-        .selected-row {
-            background-color: #e0e7ff !important;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-        }
-
-        .action-buttons button {
-            font-size: 0.75rem;
-            padding: 0.3rem 0.6rem;
-        }
-
-        .copy-btn {
-            cursor: pointer;
-            color: var(--primary-color);
-            transition: all 0.2s ease;
-            background: transparent;
-            border: 1px solid transparent;
-        }
-
-        .copy-btn:hover:not(:disabled) {
-            color: white;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            transform: scale(1.05);
-            border-color: var(--primary-color);
-        }
-
-        .copy-btn:disabled {
-            opacity: 0.3;
-            cursor: not-allowed;
-        }
-
-        .description-cell {
-            position: relative;
-            min-width: 250px;
-            max-width: 400px;
-        }
-
-        .ncm-cell {
-            min-width: 140px;
-        }
-
-        .unit-cell {
-            min-width: 100px;
-        }
-
-        .unit-cell select {
-            font-size: 0.85rem;
-            padding: 0.35rem 0.6rem;
-        }
-
-        .qty-cell {
-            min-width: 80px;
-        }
-
-        .cost-cell {
-            min-width: 150px;
-        }
-
-        .price-cell {
-            min-width: 150px;
-        }
-
-        .subtotal-cell {
-            min-width: 160px;
-        }
-
-        .markup-cell {
-            min-width: 130px;
-        }
-
-        .margin-cell {
-            min-width: 160px;
-        }
-
-        .currency-symbol {
-            font-weight: 700;
-            color: #059669;
-            font-size: 0.9rem;
-            user-select: none;
-            transition: all 0.2s ease;
-        }
-
-        .cost-cell:hover .currency-symbol,
-        .price-cell:hover .currency-symbol,
-        .subtotal-cell:hover .currency-symbol {
-            color: #047857;
-            transform: scale(1.1);
-        }
-
-        .percent-symbol {
-            font-weight: 700;
-            color: #4b5563;
-            font-size: 0.95rem;
-            user-select: none;
-            transition: all 0.2s ease;
-        }
-
-        .markup-cell:hover .percent-symbol,
-        .margin-cell:hover .percent-symbol {
-            color: #1f2937;
-            transform: scale(1.1);
-        }
-
-        .ean-cell {
-            min-width: 200px;
-        }
-
-        .description-wrapper {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-        }
-
-        .stat-badge {
-            display: inline-block;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            margin: 0.25rem;
-        }
-
-        .stat-badge.success {
-            background: #d1fae5;
-            color: #065f46;
-        }
-
-        .stat-badge.danger {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
-        /* Toast notification */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
-            z-index: 1000;
-            animation: slideIn 0.3s ease;
-        }
-
-        @keyframes slideIn {
-            from {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes slideOut {
-            from {
-                transform: translateX(0);
-                opacity: 1;
-            }
-            to {
-                transform: translateX(400px);
-                opacity: 0;
-            }
-        }
-
-        @keyframes highlight {
-            0% {
-                background-color: #fef3c7;
-            }
-            100% {
-                background-color: transparent;
-            }
-        }
-
-        .value-updated {
-            animation: highlight 0.5s ease;
-        }
-
-        /* Modal Styles */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-        }
-
-        .modal.is-active {
-            display: flex;
-            animation: fadeIn 0.3s ease;
-        }
-
-        .modal.is-active .modal-card {
-            animation: slideDown 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes slideDown {
-            from {
-                transform: translateY(-50px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        .modal-background {
-            position: fixed;
-            background-color: rgba(0, 0, 0, 0.6);
-            width: 100%;
-            height: 100%;
-        }
-
-        .modal-card {
-            margin: auto;
-            max-width: 640px;
-            width: 90%;
-        }
-
-        .print-option:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-            border: 2px solid #667eea;
-        }
-
-        /* Labels Print Styles */
-        @media print {
-            body {
-                background: white;
-            }
-            .no-print {
                 display: none !important;
             }
             
-            /* Impressão padrão */
             body:not(.printing-labels) .container {
                 max-width: 100%;
             }
@@ -545,7 +205,6 @@
                 display: none !important;
             }
             
-            /* Impressão de etiquetas */
             body.printing-labels > *:not(#labelsPrintArea) {
                 display: none !important;
             }
@@ -666,7 +325,139 @@
             }
         }
 
-        /* Stat Cards */
+        .positive {
+            color: var(--success-color);
+            font-weight: 600;
+            background-color: #f0fdf4;
+        }
+
+        .negative {
+            color: var(--danger-color);
+            font-weight: 600;
+            background-color: #fef2f2;
+        }
+
+        .selected-row {
+            background-color: #e0e7ff !important;
+        }
+
+        .currency-symbol {
+            font-weight: 700;
+            color: #059669;
+            font-size: 0.9rem;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .percent-symbol {
+            font-weight: 700;
+            color: #4b5563;
+            font-size: 0.95rem;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+
+        .stat-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.25rem;
+        }
+
+        .stat-badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .stat-badge.danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            z-index: 1000;
+            animation: slideIn 0.3s ease;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+        }
+
+        .modal.is-active {
+            display: flex;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .modal-background {
+            position: fixed;
+            background-color: rgba(0, 0, 0, 0.6);
+            width: 100%;
+            height: 100%;
+        }
+
+        .modal-card {
+            margin: auto;
+            max-width: 640px;
+            width: 90%;
+        }
+
+        .print-option {
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s ease;
+            height: 100%;
+        }
+
+        .print-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            border: 2px solid #667eea;
+        }
+
         .stat-card {
             transition: all 0.3s ease;
         }
@@ -676,7 +467,6 @@
             box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
         }
 
-        /* Preview Styles */
         #previewContent .label-page {
             transform: scale(0.9);
             margin: 20px auto;
@@ -701,39 +491,6 @@
             color: #000 !important;
         }
 
-        #previewContent .label-description {
-            font-size: 9pt !important;
-            font-weight: bold !important;
-            line-height: 1.1 !important;
-            word-wrap: break-word !important;
-            white-space: normal !important;
-            overflow: hidden !important;
-            max-height: 4.4em !important;
-        }
-
-        #previewContent .label-price {
-            font-size: 14pt !important;
-            font-weight: bold !important;
-        }
-
-        #previewContent .label-barcode {
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            flex: 1 !important;
-            overflow: hidden !important;
-            max-height: 60px !important;
-        }
-
-        #previewContent .label-barcode svg,
-        #previewContent .label-barcode canvas {
-            display: inline-block !important;
-            visibility: visible !important;
-            max-width: 95% !important;
-            max-height: 45px !important;
-        }
-
-        /* Tributos destacados */
         .tributos-badge {
             display: inline-block;
             padding: 0.15rem 0.5rem;
@@ -751,5 +508,99 @@
         .tributos-atual {
             background: linear-gradient(135deg, #3b82f6, #2563eb);
             color: white;
+        }
+
+        /* Custom Labels Modal Styles */
+        .custom-label-item {
+            display: flex;
+            align-items: center;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s ease;
+            background: white;
+        }
+
+        .custom-label-item:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.1);
+        }
+
+        .custom-label-item.selected {
+            border-color: #10b981;
+            background: #f0fdf4;
+        }
+
+        .custom-label-checkbox {
+            margin-right: 1rem;
+            transform: scale(1.3);
+            cursor: pointer;
+        }
+
+        .custom-label-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .custom-label-name {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #1f2937;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .custom-label-details {
+            font-size: 0.85rem;
+            color: #6b7280;
+            margin-top: 0.25rem;
+        }
+
+        .custom-label-quantity {
+            width: 80px;
+            margin-left: 1rem;
+        }
+
+        .custom-labels-summary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        .custom-labels-summary strong {
+            font-size: 1.5rem;
+        }
+
+        .modal-card.wide {
+            max-width: 900px;
+        }
+
+        .custom-labels-list {
+            max-height: 60vh;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+
+        .custom-labels-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .custom-labels-list::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .custom-labels-list::-webkit-scrollbar-thumb {
+            background: #667eea;
+            border-radius: 10px;
+        }
+
+        .custom-labels-list::-webkit-scrollbar-thumb:hover {
+            background: #764ba2;
         }
     
